@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Backend Engineer — Learning Path</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Prism.js syntax highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" id="prismThemeDark">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" id="prismThemeLight" disabled>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <span class="logo-icon">⚙️</span>
+      <span class="logo-text">AI Eng Path</span>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">‹</button>
+  </div>
+
+  <div class="sidebar-progress">
+    <div class="progress-label">
+      <span>Overall Progress</span>
+      <span id="overallPct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="overallBar"></div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+</aside>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="main" id="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <button class="menu-btn" id="menuBtn">☰</button>
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="topbar-actions">
+      <button class="btn-ghost" id="resetBtn" title="Reset progress">↺ Reset</button>
+      <button class="btn-ghost" id="themeBtn" title="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <!-- VIEWS -->
+  <div id="viewDashboard" class="view active"></div>
+  <div id="viewModule" class="view"></div>
+
+</main>
+
+<!-- ===== MODULE MODAL (System Design) ===== -->
+<div class="modal-overlay" id="sdOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="sdTitle">System Design Challenge</h3>
+      <button class="modal-close" id="sdClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="sd-prompt" id="sdPrompt"></div>
+      <div class="sd-hints">
+        <div class="sd-hints-label">Hints (click to reveal)</div>
+        <ul class="hints-list" id="sdHints"></ul>
+      </div>
+      <div class="sd-timer">
+        <button class="btn-primary" id="sdTimerBtn">▶ Start 30-min Timer</button>
+        <span class="timer-display" id="sdTimerDisplay"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+  // Tell Prism autoloader where to find language components
+  if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
+    Prism.plugins.autoloader.languages_path =
+      'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+  }
+</script>
+<script src="curriculum.js"></script>
+<script src="docker-examples.js"></script>
+<script src="docker-lessons.js"></script>
+<script src="fastapi-lessons.js"></script>
+<script src="fastapi-examples.js"></script>
+<script src="db-lessons.js"></script>
+<script src="db-examples.js"></script>
+<script src="kubernetes-lessons.js"></script>
+<script src="kubernetes-examples.js"></script>
+<script src="kubernetes-advanced-lessons.js"></script>
+<script src="kubernetes-advanced-examples.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

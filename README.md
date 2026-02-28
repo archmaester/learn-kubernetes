@@ -25,7 +25,7 @@ A self-paced, 20-week interactive learning platform built for engineers who want
 | M3 | Databases: PostgreSQL, MongoDB, Redis | ✅ Full lessons + code examples |
 | M4 | Kubernetes Fundamentals | ✅ Full lessons + code examples |
 | M5 | Kubernetes Advanced: Networking, Storage, Security | ✅ Full lessons + code examples |
-| M6 | CI/CD Pipelines | Topics, labs, and resources |
+| M6 | CI/CD Pipelines | ✅ Full lessons + code examples |
 | M7 | Cloud Platforms: GCP / AWS / Azure | Topics, labs, and resources |
 | M8 | Microservices Architecture | Topics, labs, and resources |
 | M9 | Kafka & Message Queues | Topics, labs, and resources |
@@ -133,7 +133,10 @@ learn-kubernetes/
 ├── kubernetes-examples.js            # M4: code examples
 │
 ├── kubernetes-advanced-lessons.js    # M5: written lesson content
-└── kubernetes-advanced-examples.js   # M5: code examples
+├── kubernetes-advanced-examples.js   # M5: code examples
+│
+├── cicd-lessons.js                   # M6: written lesson content
+└── cicd-examples.js                  # M6: code examples
 ```
 
 ### How the code is organized

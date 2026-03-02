@@ -202,10 +202,53 @@
       icon: "⚙️",
       items: [
         {
-          title: "Install Docker Engine on Ubuntu/Debian",
-          desc: "Official install script — never use the distro's outdated package.",
+          title: "Install Docker Desktop on macOS",
+          desc: "Docker Desktop is the recommended way to run Docker on macOS — it bundles the daemon, CLI, BuildKit, Compose, and an optional local Kubernetes cluster.",
           lang: "bash",
-          filename: "install-docker.sh",
+          filename: "install-docker-macos.sh",
+          code: `# Option 1 — Homebrew (recommended for developers)
+brew install --cask docker
+
+# Launch Docker Desktop (first run opens the GUI for license acceptance)
+open -a Docker
+
+# Wait for the daemon to be ready, then verify
+docker run --rm hello-world
+
+# ── What Homebrew installs ─────────────────────────────────────────────
+# /Applications/Docker.app          ← GUI + daemon (runs a Linux VM via Apple Hypervisor)
+# /usr/local/bin/docker             ← CLI (symlinked from the app bundle)
+# /usr/local/bin/docker-compose     ← Compose v2 plugin wrapper
+# /usr/local/bin/docker-buildx      ← BuildKit CLI plugin
+
+# ── Optional: install CLI tools separately (without Desktop GUI) ───────
+# Docker Desktop is required for the daemon on macOS — there is no native
+# Docker Engine for macOS. The alternatives below still require a daemon:
+
+# colima: lightweight VM-based Docker daemon (good for CI or headless use)
+brew install colima docker docker-buildx docker-compose
+colima start --cpu 4 --memory 8 --disk 60
+# colima start --arch aarch64 --vm-type vz  ← Apple Silicon optimised
+
+# orbstack: fast, low-overhead Docker + Linux VMs (commercial, free tier)
+brew install --cask orbstack
+
+# ── Docker Desktop settings to tweak ──────────────────────────────────
+# Settings → Resources → CPUs / Memory   ← increase from defaults (2 CPU / 2 GB)
+# Settings → Features in development → Use Rosetta for x86_64 emulation  ← Apple Silicon
+# Settings → Kubernetes → Enable Kubernetes  ← single-node k8s for local dev`,
+          notes: [
+            "Docker Desktop on macOS runs containers inside a lightweight Linux VM (Apple Hypervisor Framework on Apple Silicon, HyperKit on Intel).",
+            "colima is a popular headless alternative — useful in CI or when you want to avoid the Docker Desktop GUI and license requirements.",
+            "On Apple Silicon (M1/M2/M3) always pull linux/arm64 images when available; use --platform linux/arm64 explicitly to avoid silent Rosetta emulation.",
+            "Docker Desktop 4.x ships Compose V2 as 'docker compose' (space, not hyphen) — the old standalone 'docker-compose' binary is deprecated.",
+          ],
+        },
+        {
+          title: "Install Docker Engine on Linux (Ubuntu/Debian)",
+          desc: "Install the official Docker Engine on Ubuntu or Debian — never use the distro's outdated package.",
+          lang: "bash",
+          filename: "install-docker-linux.sh",
           code: `# Remove old versions
 sudo apt-get remove -y docker docker-engine docker.io containerd runc
 
@@ -236,8 +279,9 @@ newgrp docker
 docker run --rm hello-world`,
           notes: [
             "Use docker-compose-plugin (the 'docker compose' command), not the standalone docker-compose binary.",
-            "newgrp docker applies the group change in the current shell without logout.",
-            "On macOS/Windows, use Docker Desktop instead — it bundles all of this.",
+            "newgrp docker applies the group change in the current shell without a full logout/login.",
+            "For RHEL/Fedora/Amazon Linux replace 'apt-get' with 'dnf' and use the centos repo URL.",
+            "On Linux, Docker Engine runs natively — no VM layer, unlike macOS or Windows.",
           ],
         },
         {
@@ -2060,6 +2104,426 @@ spec:
             "DinD requires --privileged which gives the build pod near-root access to the node. Avoid in shared clusters.",
             "Kaniko caches layers in a registry (--cache-repo). First build is slow; subsequent builds reuse cached layers.",
             "For GitHub Actions in K8s, prefer BuildKit with Docker's actions over Kaniko — easier cache management. Use Kaniko for self-hosted K8s CI where Actions isn't available.",
+          ],
+        },
+      ],
+    },
+    // ──────────────────────────────────────────────────────────────────────
+    {
+      id: "system-design",
+      title: "System Design Case Studies",
+      icon: "🏗️",
+      items: [
+        // ── Case Study 1 ────────────────────────────────────────────────
+        {
+          title: "Case Study 1: ML Training Pipeline — Train Inside Docker, Persist Model Outside",
+          desc: `Problem: A data scientist runs GPU-accelerated PyTorch training inside a container. The trained model checkpoint (several GB) must be saved to the host filesystem so that a separate, lightweight inference container can serve it — without baking the model weights into any image.
+
+Key design decisions:
+• Use a named bind mount (host path) for \`/models\` — not a named volume — so ops can rsync / back up the path directly.
+• Training container is ephemeral (--rm); it writes to /models and exits. The image itself stays small (~4 GB GPU runtime, but no weights).
+• Inference container mounts the same host path read-only. It can be restarted independently and rolled back by pointing at a different checkpoint directory.
+• A separate "exporter" stage converts the raw checkpoint to TorchScript/ONNX for the inference server, keeping concerns separated.`,
+          lang: "bash",
+          filename: "ml-training-pipeline.sh",
+          code: `# ── Directory layout on the HOST ──────────────────────────────────────
+# /data/ml-project/
+#   datasets/          ← training data (read-only for container)
+#   models/
+#     checkpoints/     ← raw .pt checkpoints written by trainer
+#     exports/         ← TorchScript / ONNX for inference server
+#   code/              ← Python source (bind-mounted for dev iteration)
+
+mkdir -p /data/ml-project/{datasets,models/checkpoints,models/exports,code}
+
+# ── Stage 1: Training container (GPU, ephemeral, --rm) ────────────────
+# The image bundles the Python environment, NOT the weights.
+# We mount data + code + output dir from the host.
+docker run --rm \\
+  --name trainer \\
+  --gpus '"device=0"' \\
+  --shm-size=8g \\            # PyTorch DataLoader uses /dev/shm for multiprocessing
+  --memory=32g \\
+  --cpus=8 \\
+  --env EPOCHS=50 \\
+  --env BATCH_SIZE=64 \\
+  --env CHECKPOINT_DIR=/models/checkpoints \\
+  --env WANDB_API_KEY_FILE=/run/secrets/wandb_key \\
+  --mount type=bind,src=/data/ml-project/datasets,dst=/datasets,readonly \\
+  --mount type=bind,src=/data/ml-project/code,dst=/app,readonly \\
+  --mount type=bind,src=/data/ml-project/models,dst=/models \\
+  --mount type=secret,id=wandb_key,target=/run/secrets/wandb_key \\
+  my-registry/pytorch-trainer:cuda12.1 \\
+  python /app/train.py
+# train.py saves: /models/checkpoints/epoch_50_val0.92.pt
+
+# How the secret is provided (Docker 23+ with BuildKit secrets at runtime):
+# WANDB_KEY=$(cat ~/.wandb_key) docker run ... (avoid: leaks to process list)
+# Better: use --env-file with a .env file that is .gitignored
+# Best: use --mount type=secret (shown above) — only visible inside the container
+
+# ── Stage 2: Export container (CPU-only, converts checkpoint → ONNX) ──
+docker run --rm \\
+  --name exporter \\
+  --memory=8g \\
+  --cpus=4 \\
+  --env CHECKPOINT=/models/checkpoints/epoch_50_val0.92.pt \\
+  --env OUTPUT_DIR=/models/exports \\
+  --mount type=bind,src=/data/ml-project/models,dst=/models \\
+  my-registry/pytorch-exporter:latest \\
+  python /app/export_onnx.py
+# Writes: /models/exports/model_v1.onnx
+
+# ── Stage 3: Inference server (long-running, read-only model mount) ────
+docker run -d \\
+  --name inference-server \\
+  --restart unless-stopped \\
+  --cpus=4 \\
+  --memory=8g \\
+  -p 8080:8080 \\
+  --mount type=bind,src=/data/ml-project/models/exports,dst=/models,readonly \\
+  --env MODEL_PATH=/models/model_v1.onnx \\
+  --health-cmd='curl -sf http://localhost:8080/health || exit 1' \\
+  --health-interval=15s \\
+  --health-retries=3 \\
+  my-registry/onnx-inference-server:latest
+
+# ── Rollback: point the inference server at an older export ───────────
+# No image rebuild needed — just restart with a different MODEL_PATH:
+docker stop inference-server
+docker run -d \\
+  --name inference-server \\
+  --restart unless-stopped \\
+  -p 8080:8080 \\
+  --mount type=bind,src=/data/ml-project/models/exports,dst=/models,readonly \\
+  --env MODEL_PATH=/models/model_v0.onnx \\
+  my-registry/onnx-inference-server:latest
+
+# ── Key insight ────────────────────────────────────────────────────────
+# Container images stay small and reusable across experiments.
+# Host path = single source of truth for artifacts — easy to back up,
+# rsync to other machines, or mount into K8s PersistentVolumes later.`,
+          notes: [
+            "--shm-size is critical for PyTorch DataLoader with num_workers > 0 — workers communicate via /dev/shm. The default 64 MB is almost always too small.",
+            "Use --gpus '\"device=0\"' (or 'all') only on the training container; inference typically runs on CPU with ONNX Runtime.",
+            "Bind mounts (host path) are preferred over named volumes here because the artifacts need to be accessible to external tools (rsync, S3 sync scripts, monitoring).",
+            "The exporter stage keeps the training image and inference image decoupled — the inference server only needs ONNX Runtime, not the full PyTorch GPU stack.",
+            "In production, swap the host bind mount for a cloud storage volume (AWS EFS, GCS Filestore) mounted into both the training VM and inference cluster nodes.",
+          ],
+        },
+        // ── Case Study 2 ────────────────────────────────────────────────
+        {
+          title: "Case Study 2: Zero-Downtime Web App Deployment with Blue-Green Switch via Compose",
+          desc: `Problem: A team deploys a FastAPI backend behind an nginx reverse proxy. They need zero-downtime deployments with instant rollback capability — on a single VM, without Kubernetes.
+
+Key design decisions:
+• Run two app versions simultaneously (blue + green), each on an isolated Docker network.
+• nginx is the traffic router. Switching traffic = updating nginx upstream + reload (SIGHUP, no restart).
+• HEALTHCHECK on the new container must pass before traffic is cut over.
+• The old container stays up for 60 s as a fallback, then is removed.
+• Named volumes for PostgreSQL and Redis are shared across deployments — DB is not part of the blue/green swap.`,
+          lang: "yaml",
+          filename: "docker-compose.blue-green.yml",
+          code: `# compose.yml — baseline services (DB, cache, proxy) always running
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    networks: [backend]
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d       # ← writable: deploy script swaps upstream
+      - ./certs:/etc/nginx/certs:ro
+    networks: [backend, frontend]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  redisdata:
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password.txt
+
+networks:
+  backend:
+  frontend:
+
+---
+# nginx/conf.d/upstream.conf — managed by deploy.sh, NOT by humans
+# Active slot is written here during deployment.
+# upstream app {
+#     server app-blue:8000;   ← or app-green:8000
+# }`,
+          lang2: "bash",
+          filename2: "deploy.sh",
+          code2: `#!/usr/bin/env bash
+# deploy.sh — zero-downtime blue/green swap
+# Usage: ./deploy.sh ghcr.io/org/myapp:v2.3.1
+set -euo pipefail
+
+IMAGE="$1"
+COMPOSE_FILE="compose.yml"
+UPSTREAM_CONF="./nginx/conf.d/upstream.conf"
+
+# ── 1. Determine current active slot ────────────────────────────────
+if docker ps --filter name=app-blue --filter status=running -q | grep -q .; then
+  ACTIVE="blue"; IDLE="green"
+else
+  ACTIVE="green"; IDLE="blue"
+fi
+echo "Active: $ACTIVE  →  Deploying to: $IDLE"
+
+# ── 2. Start the idle slot with the new image ───────────────────────
+docker run -d \\
+  --name "app-$IDLE" \\
+  --network backend \\         # same network as postgres + redis + nginx
+  --network-alias "app-$IDLE" \\
+  --restart unless-stopped \\
+  --memory=512m --cpus=1 \\
+  --env-file .env.production \\
+  --env DB_HOST=postgres \\
+  --env REDIS_HOST=redis \\
+  --health-cmd='curl -sf http://localhost:8000/health || exit 1' \\
+  --health-interval=10s \\
+  --health-retries=6 \\       # 60 s window to become healthy
+  --health-start-period=20s \\ # grace period before checks start
+  "$IMAGE"
+
+# ── 3. Wait for the new container to be healthy ─────────────────────
+echo "Waiting for app-$IDLE to become healthy..."
+for i in $(seq 1 18); do   # 18 × 10 s = 180 s timeout
+  STATUS=$(docker inspect --format='{{.State.Health.Status}}' "app-$IDLE")
+  [ "$STATUS" = "healthy" ] && break
+  [ "$STATUS" = "unhealthy" ] && {
+    echo "New container is unhealthy. Aborting."
+    docker rm -f "app-$IDLE"
+    exit 1
+  }
+  echo "  Status: $STATUS (attempt $i/18)..."
+  sleep 10
+done
+[ "$STATUS" != "healthy" ] && { echo "Timeout waiting for health."; docker rm -f "app-$IDLE"; exit 1; }
+
+# ── 4. Atomic nginx upstream switch (SIGHUP, no downtime) ───────────
+cat > "$UPSTREAM_CONF" <<EOF
+upstream app {
+    server app-$IDLE:8000;
+}
+EOF
+docker exec nginx nginx -s reload
+echo "Traffic switched to app-$IDLE"
+
+# ── 5. Drain and remove the old container ───────────────────────────
+echo "Draining app-$ACTIVE (60 s)..."
+sleep 60
+docker rm -f "app-$ACTIVE"
+echo "Deployment complete. Active slot: $IDLE"`,
+          notes: [
+            "nginx -s reload sends SIGHUP which triggers a graceful reload — existing connections finish, new connections use the updated upstream. Zero dropped requests.",
+            "HEALTHCHECK --health-start-period gives the app time to warm up (DB connections, model loading) before checks count against retries.",
+            "The 60-second drain after the switch lets in-flight requests on the old slot complete. Tune based on your p99 request latency.",
+            "Named volumes (pgdata, redisdata) are outside the blue/green swap — they persist across deployments and are shared by both slots.",
+            "This pattern works on a single VM. In production, the same concept maps directly to Kubernetes Deployments with RollingUpdate strategy and readinessProbes.",
+          ],
+        },
+        // ── Case Study 3 ────────────────────────────────────────────────
+        {
+          title: "Case Study 3: Containerized ETL Pipeline — Multi-Stage Data Processing with Sidecar Log Shipping",
+          desc: `Problem: A data engineering team runs a nightly ETL pipeline: (1) extract from a REST API, (2) transform/validate with pandas, (3) load into PostgreSQL. Each stage is a separate container so it can be scaled, retried, or replaced independently. A sidecar container ships structured logs to an external observability platform.
+
+Key design decisions:
+• Stages communicate via a shared tmpfs volume (in-memory, fast, auto-deleted when containers exit).
+• A named volume stores the final "loaded" confirmation file — used as a success sentinel for idempotency checks on retry.
+• The sidecar (Fluent Bit) shares the log volume with all pipeline stages — no application-level log forwarding code needed.
+• Resource limits are set per stage reflecting actual workload (extract is I/O-bound, transform is CPU/mem-bound).
+• depends_on with condition: service_completed_successfully ensures strict ordering.`,
+          lang: "yaml",
+          filename: "compose.etl-pipeline.yml",
+          code: `# compose.etl-pipeline.yml
+# Run: docker compose -f compose.etl-pipeline.yml up --abort-on-container-exit
+services:
+
+  # ── Stage 0: pre-flight idempotency check ─────────────────────────
+  check-already-run:
+    image: alpine:3.20
+    volumes:
+      - etl-state:/state
+    # Exit 0 if already completed today, exit 1 if we should proceed.
+    # Compose --abort-on-container-exit will stop the stack on exit 0,
+    # which is intentional — we use a wrapper script to interpret the code.
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        DATE=$(date +%Y-%m-%d)
+        if [ -f /state/completed_$$DATE ]; then
+          echo "ETL already completed for $$DATE, skipping."
+          exit 0
+        fi
+        echo "No completion marker found. Proceeding."
+        exit 1   # non-zero so Compose continues to dependent services
+
+  # ── Stage 1: Extract ──────────────────────────────────────────────
+  extract:
+    image: my-registry/etl-extract:latest
+    restart: "no"
+    depends_on:
+      check-already-run:
+        condition: service_completed_successfully
+    environment:
+      API_URL: https://api.source.example.com/v2/records
+      OUTPUT_FILE: /workspace/raw.jsonl
+      LOG_FILE: /logs/extract.jsonl
+    env_file: [.env.etl]
+    secrets: [source_api_token]
+    volumes:
+      - workspace:/workspace         # tmpfs: fast, auto-cleaned
+      - etl-logs:/logs               # shared with sidecar
+    networks: [pipeline-net]
+    mem_limit: 256m
+    cpus: "0.5"                      # I/O-bound: doesn't need much CPU
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /workspace/raw.jsonl ] || exit 1"]
+      interval: 5s
+      retries: 12
+      start_period: 10s
+
+  # ── Stage 2: Transform / Validate ─────────────────────────────────
+  transform:
+    image: my-registry/etl-transform:latest
+    restart: "no"
+    depends_on:
+      extract:
+        condition: service_completed_successfully
+    environment:
+      INPUT_FILE: /workspace/raw.jsonl
+      OUTPUT_FILE: /workspace/clean.parquet
+      SCHEMA_FILE: /app/schemas/records_v3.json
+      LOG_FILE: /logs/transform.jsonl
+      REJECT_THRESHOLD: "0.05"       # fail if >5% rows rejected
+    volumes:
+      - workspace:/workspace
+      - etl-logs:/logs
+    networks: [pipeline-net]
+    mem_limit: 2g                    # pandas needs headroom
+    cpus: "2"                        # CPU-bound: vectorised ops
+
+  # ── Stage 3: Load ─────────────────────────────────────────────────
+  load:
+    image: my-registry/etl-load:latest
+    restart: "no"
+    depends_on:
+      transform:
+        condition: service_completed_successfully
+    environment:
+      INPUT_FILE: /workspace/clean.parquet
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: warehouse
+      DB_USER: etl_writer
+      LOG_FILE: /logs/load.jsonl
+      STATE_DIR: /state
+    secrets: [db_password]
+    volumes:
+      - workspace:/workspace
+      - etl-logs:/logs
+      - etl-state:/state             # writes completion sentinel here
+    networks: [pipeline-net]
+    mem_limit: 512m
+    cpus: "1"
+
+  # ── Sidecar: Fluent Bit log shipper ───────────────────────────────
+  # Shares the log volume. Reads JSONL files written by each stage
+  # and forwards to an observability backend (Loki, Datadog, etc.)
+  log-shipper:
+    image: fluent/fluent-bit:3.1
+    restart: "no"
+    depends_on:
+      - extract      # start as soon as extract begins writing logs
+    volumes:
+      - etl-logs:/logs:ro
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    environment:
+      LOKI_HOST: loki.monitoring.internal
+      LOKI_PORT: "3100"
+      PIPELINE_RUN_ID: "\${PIPELINE_RUN_ID:-unknown}"
+    networks: [pipeline-net]
+    mem_limit: 64m
+    cpus: "0.1"
+
+  # ── Dependency: PostgreSQL (could be external in production) ──────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: etl_writer
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etl_writer -d warehouse"]
+      interval: 10s
+      retries: 5
+    networks: [pipeline-net]
+
+volumes:
+  workspace:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=4g,mode=1777    # in-memory workspace — fast I/O, auto-wiped on compose down
+  etl-logs:                   # named volume: sidecar reads, stages write
+  etl-state:                  # persists completion sentinels across runs
+  pgdata:
+
+secrets:
+  source_api_token:
+    file: ./secrets/source_api_token.txt
+  db_password:
+    file: ./secrets/db_password.txt
+
+networks:
+  pipeline-net:`,
+          notes: [
+            "tmpfs as a Compose volume (driver_opts type: tmpfs) gives you in-memory I/O between stages — ideal for intermediate files that are large but short-lived. No disk writes, automatic cleanup.",
+            "condition: service_completed_successfully (Compose 2.1+) means a stage only starts if the previous container exited with code 0. A non-zero exit aborts the pipeline — no partial loads.",
+            "The sidecar pattern (log-shipper) keeps observability concerns out of business logic containers. Fluent Bit tails JSONL log files; stages just append to a file — no SDK, no network call in the app code.",
+            "etl-state with a date-stamped sentinel file provides idempotency: re-running the compose stack on the same day is a no-op. This is cheap, file-based, and works even if the DB was already loaded.",
+            "In production this pipeline would be triggered by Airflow, Prefect, or a cron job. The container abstraction means you can run the exact same images locally, in CI, and on the production scheduler with no code changes.",
           ],
         },
       ],

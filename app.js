@@ -435,24 +435,48 @@ function renderCodeExamples(m, container) {
               <span class="code-section-icon">${s.icon}</span>
               <h2 class="code-section-title">${s.title}</h2>
             </div>
-            ${s.items.map((item, ii) => `
+            ${s.items.map((item, ii) => {
+              const hasPlatforms = item.platforms && (item.platforms.mac || item.platforms.linux);
+              const defaultPlatform = hasPlatforms ? "mac" : null;
+              return `
               <div class="code-example" id="cex-${s.id}-${ii}">
                 <div class="code-example-header">
                   <div class="code-example-meta">
                     <span class="code-example-title">${item.title}</span>
-                    ${item.filename ? `<span class="code-filename">${item.filename}</span>` : ""}
+                    ${!hasPlatforms && item.filename ? `<span class="code-filename">${item.filename}</span>` : ""}
                   </div>
                   <div class="code-example-actions">
                     <span class="code-lang-badge">${item.lang}</span>
-                    <button class="code-copy-btn" data-code="${encodeURIComponent(item.code)}" title="Copy code">
-                      Copy
-                    </button>
+                    ${!hasPlatforms ? `<button class="code-copy-btn" data-code="${encodeURIComponent(item.code)}" title="Copy code">Copy</button>` : ""}
                   </div>
                 </div>
                 ${item.desc ? `<p class="code-example-desc">${item.desc}</p>` : ""}
-                <div class="code-block-wrapper">
-                  <pre class="code-pre"><code class="language-${langToPrism(item.lang)}">${escapeHtml(item.code)}</code></pre>
-                </div>
+                ${hasPlatforms ? `
+                  <div class="platform-tabs" data-example="cex-${s.id}-${ii}">
+                    ${item.platforms.mac ? `<button class="platform-tab active" data-platform="mac">macOS</button>` : ""}
+                    ${item.platforms.linux ? `<button class="platform-tab${!item.platforms.mac ? " active" : ""}" data-platform="linux">Linux</button>` : ""}
+                  </div>
+                  ${item.platforms.mac ? `
+                    <div class="platform-pane active" data-platform="mac" data-example="cex-${s.id}-${ii}">
+                      ${item.platforms.mac.filename ? `<div class="platform-filename"><span class="code-filename">${item.platforms.mac.filename}</span><button class="code-copy-btn" data-code="${encodeURIComponent(item.platforms.mac.code)}" title="Copy code">Copy</button></div>` : `<div class="platform-filename"><button class="code-copy-btn" data-code="${encodeURIComponent(item.platforms.mac.code)}" title="Copy code">Copy</button></div>`}
+                      <div class="code-block-wrapper">
+                        <pre class="code-pre"><code class="language-${langToPrism(item.lang)}">${escapeHtml(item.platforms.mac.code)}</code></pre>
+                      </div>
+                    </div>
+                  ` : ""}
+                  ${item.platforms.linux ? `
+                    <div class="platform-pane${!item.platforms.mac ? " active" : ""}" data-platform="linux" data-example="cex-${s.id}-${ii}">
+                      ${item.platforms.linux.filename ? `<div class="platform-filename"><span class="code-filename">${item.platforms.linux.filename}</span><button class="code-copy-btn" data-code="${encodeURIComponent(item.platforms.linux.code)}" title="Copy code">Copy</button></div>` : `<div class="platform-filename"><button class="code-copy-btn" data-code="${encodeURIComponent(item.platforms.linux.code)}" title="Copy code">Copy</button></div>`}
+                      <div class="code-block-wrapper">
+                        <pre class="code-pre"><code class="language-${langToPrism(item.lang)}">${escapeHtml(item.platforms.linux.code)}</code></pre>
+                      </div>
+                    </div>
+                  ` : ""}
+                ` : `
+                  <div class="code-block-wrapper">
+                    <pre class="code-pre"><code class="language-${langToPrism(item.lang)}">${escapeHtml(item.code)}</code></pre>
+                  </div>
+                `}
                 ${item.notes && item.notes.length ? `
                   <div class="code-notes">
                     <div class="code-notes-label">📌 Key Notes</div>
@@ -462,7 +486,7 @@ function renderCodeExamples(m, container) {
                   </div>
                 ` : ""}
               </div>
-            `).join("")}
+            `}).join("")}
           </div>
         `).join("")}
       </div>
@@ -476,6 +500,26 @@ function renderCodeExamples(m, container) {
       container.querySelectorAll(".code-section").forEach(s => s.classList.remove("active"));
       navItem.classList.add("active");
       document.getElementById(`csec-${navItem.dataset.sid}`).classList.add("active");
+    });
+  });
+
+  // Platform tab clicks
+  container.querySelectorAll(".platform-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const exId = tab.closest(".platform-tabs").dataset.example;
+      const platform = tab.dataset.platform;
+      // Toggle tabs
+      tab.closest(".platform-tabs").querySelectorAll(".platform-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      // Toggle panes
+      container.querySelectorAll(`.platform-pane[data-example="${exId}"]`).forEach(p => {
+        p.classList.toggle("active", p.dataset.platform === platform);
+      });
+      // Re-highlight
+      if (typeof Prism !== "undefined") {
+        const activePane = container.querySelector(`.platform-pane.active[data-example="${exId}"]`);
+        if (activePane) Prism.highlightAllUnder(activePane);
+      }
     });
   });
 

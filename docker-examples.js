@@ -1,9 +1,10 @@
-// Patches the Docker module (m1) with comprehensive production-grade content.
-// Loaded after curriculum.js — runs immediately to enrich the module before app.js uses it.
+// Patches the Docker module (m1) with topics, labs, interviewQuestions, and codeExamples.
+// Loaded after curriculum.js but before docker-lessons.js.
+// Tells a coherent story: building an ML recommendation/inference system with Docker.
 (function patchDockerModule() {
   const m = CURRICULUM.phases[0].modules[0];
 
-  // ── Enhanced topics ──────────────────────────────────────────────────────
+  // ── Topics ──────────────────────────────────────────────────────────────────
   m.topics = [
     // Architecture & internals
     "Docker architecture: dockerd daemon, REST API, Docker CLI — how they communicate",
@@ -11,11 +12,13 @@
     "cgroups v2: resource limits (CPU, memory, PIDs, block I/O) enforced by the kernel",
     "Storage driver: OverlayFS — union mounts, lowerdir/upperdir, copy-on-write layers",
     "Container runtimes: runc (OCI), containerd, CRI-O — how they relate to Docker",
-    // Setup
+
+    // Setup & configuration
     "Docker Engine vs Docker Desktop: Engine is daemon-only (Linux); Desktop bundles daemon + CLI + GUI + K8s (macOS/Windows)",
     "daemon.json: log-driver, storage-driver, live-restore, metrics-addr, registry-mirrors",
     "Post-install: adding user to 'docker' group to run without sudo; socket permissions",
     "Docker contexts: switch between local, remote SSH, and Kubernetes endpoints",
+
     // Dockerfile instructions
     "FROM: base image selection — scratch, distroless, alpine, slim, full — trade-offs",
     "RUN: exec form vs shell form; apt-get best practices (no cache, single layer)",
@@ -29,10 +32,10 @@
     "HEALTHCHECK: --interval, --timeout, --retries, --start-period; exit 0=healthy, 1=unhealthy",
     "LABEL: OCI image spec labels (org.opencontainers.image.*); structured metadata",
     "STOPSIGNAL: override SIGTERM for apps that handle a different signal (e.g., SIGQUIT for nginx)",
-    "ONBUILD: deferred instructions for base images; rarely useful, often confusing",
     ".dockerignore: glob syntax, negation (!), reduces build context sent to daemon",
     "Layer caching rules: each instruction is a layer; cache breaks on first change",
     "Multi-stage builds: AS named stages; --target flag; COPY --from=stage",
+
     // BuildKit
     "BuildKit: enable via DOCKER_BUILDKIT=1 or buildx; parallel stages, better caching",
     "--mount=type=cache: persistent cache dir between builds (pip, apt, cargo, npm)",
@@ -41,15 +44,16 @@
     "--mount=type=bind: bind-mount source for read-only access during RUN",
     "Heredoc RUN syntax (Docker 1.23+): RUN <<EOF for multi-command blocks",
     "docker buildx bake: HCL/JSON build matrix config for multiple images",
+
     // Running containers
-    "Container lifecycle: created → running → paused → stopped → removed",
+    "Container lifecycle: created -> running -> paused -> stopped -> removed",
     "docker run key flags: -d, -it, --rm, --name, -p, -v, -e, --env-file, --network, --restart",
     "Restart policies: no, always, unless-stopped, on-failure[:max-retries]",
     "Resource limits: --memory, --memory-swap, --cpus, --cpu-shares, --pids-limit",
     "The PID 1 problem: shell form CMD wraps in /bin/sh, orphans signals; use exec form or tini",
     "Signal handling: SIGTERM sent on docker stop; --stop-timeout sets grace period before SIGKILL",
     "tini / --init: lightweight init to reap zombie processes and forward signals correctly",
-    "User namespace remapping: --userns-remap for rootless-like isolation at daemon level",
+
     // Security
     "Capabilities: --cap-drop ALL then --cap-add only what you need (principle of least privilege)",
     "--read-only filesystem: pair with --tmpfs for writable runtime paths",
@@ -57,50 +61,50 @@
     "Seccomp profiles: default profile blocks 44 syscalls; custom profiles for tighter lockdown",
     "AppArmor profiles: Docker ships a default; custom profiles via --security-opt apparmor",
     "Rootless Docker: run dockerd as non-root; limitations: no host ports <1024, some volumes",
+
     // Networking
     "Network drivers: bridge (default), host, none, overlay (Swarm), macvlan, ipvlan",
     "Custom bridge network: automatic DNS by container name; isolated from default bridge",
     "Host networking: container shares host network stack; useful for performance-sensitive apps",
-    "Overlay network: Swarm multi-host networking; VXLAN tunneling between nodes",
     "Port publishing: -p host:container; bind to 127.0.0.1 to avoid exposing to public interface",
     "Network aliases: --network-alias; multiple names for same container",
-    // Volumes
+
+    // Volumes & storage
     "Volume types: named volumes (managed by Docker), bind mounts (host path), tmpfs (in-memory)",
     "Volume lifecycle: independent of containers; persist until explicitly deleted",
     "Bind mount vs volume: bind mounts for dev (hot reload); named volumes for production data",
     "Volume backup: tar via docker run with --volumes-from or explicit -v mount",
-    "Volume plugins: NFS, AWS EFS, GCS FUSE — pluggable via --volume-driver",
+
     // Compose
     "Compose file structure: services, networks, volumes, configs, secrets (version field deprecated)",
     "depends_on with condition: service_healthy waits for HEALTHCHECK to pass",
     "Environment variables: environment (inline), env_file, .env for compose variable interpolation",
     "Compose profiles: --profile flag; mark services with profiles: [dev] to exclude by default",
     "Compose override: docker-compose.override.yml auto-merged; docker-compose -f base.yml -f dev.yml",
-    "Compose secrets: file-based (for local) and external (for Swarm); mounted at /run/secrets/",
     "Compose watch (v2.22+): sync+restart or rebuild on file change for dev inner loop",
+
     // Registry & images
     "Image naming: registry/repository:tag; default registry is docker.io; :latest is not special",
     "Image tagging strategy: semantic version + git SHA; never rely on :latest in production",
     "Multi-arch builds: docker buildx + QEMU emulation; --platform linux/amd64,linux/arm64",
     "Manifest lists (image index): one tag pointing to arch-specific images",
-    "docker buildx imagetools: inspect and manipulate manifest lists",
     "ECR authentication: aws ecr get-login-password | docker login; token expires in 12h",
     "GCR/GAR authentication: gcloud auth configure-docker or Workload Identity + credential helper",
-    "Harbor: self-hosted registry with vulnerability scanning, replication, RBAC, Helm chart repo",
     "Image scanning: Trivy, Docker Scout, Snyk — integrate in CI before push",
     "Image signing: cosign (Sigstore), Docker Content Trust (Notary v1), SLSA provenance",
-    // Debugging
+
+    // Debugging & observability
     "docker logs: --follow, --tail N, --since 1h, --timestamps",
     "docker exec: -it for interactive; run one-off diagnostic commands",
     "docker inspect: full JSON state — network, mounts, env, labels, restart policy",
     "docker stats: live CPU%, MEM usage/limit, NET I/O, BLOCK I/O",
     "docker events: audit trail — container start/stop/die, image pull, network connect",
     "Debugging crashed containers: override --entrypoint to /bin/sh; run with --rm -it",
-    "nsenter: enter container namespaces from host — use when exec is not available",
     "docker system df: disk usage by images/containers/volumes/build cache",
     "docker system prune: clean unused resources; -a removes all unused images",
     "Ephemeral debug containers: docker run --pid=container:TARGET --net=container:TARGET nicolaka/netshoot",
-    // CI/CD
+
+    // CI/CD integration
     "BuildKit cache in CI: --cache-from type=registry and --cache-to type=registry,mode=max",
     "GitHub Actions cache: type=gha uses Actions cache API (no registry needed)",
     "DinD (Docker-in-Docker): privileged pod running its own daemon; security risk",
@@ -110,2423 +114,2700 @@
     "docker/metadata-action: generate tags and labels from git refs and events",
   ];
 
-  // ── Enhanced labs ────────────────────────────────────────────────────────
+  // ── Labs ────────────────────────────────────────────────────────────────────
   m.labs = [
     {
-      title: "Understand Image Layers with dive",
-      desc: "Pull a public image (python:3.12). Run `docker history` to see layers. Install 'dive' (wagoodman/dive) and explore the layer breakdown. Find wasted space. Then build a multi-stage version and compare sizes.",
+      title: "Install Docker & Explore Image Layers with dive",
+      desc: "Install Docker Desktop (macOS) or Docker Engine (Linux). Pull python:3.12 and python:3.12-slim. Run 'docker history' on both and compare layers. Install wagoodman/dive and interactively explore layer contents. Identify wasted space and understand how OverlayFS layers stack.",
       difficulty: "beginner",
     },
     {
-      title: "Containerize a FastAPI App from Scratch",
-      desc: "Write a Dockerfile for a FastAPI app: multi-stage build (builder + runtime), non-root user, .dockerignore, HEALTHCHECK. Target image size < 150 MB. Verify with `docker inspect` that USER is non-root.",
+      title: "Containerize a FastAPI ML Inference API",
+      desc: "Write a Dockerfile for a FastAPI app that loads a scikit-learn model from a pickle file and serves /predict. Use multi-stage build (builder installs deps, runtime copies only wheel + model). Add HEALTHCHECK, non-root USER, and .dockerignore. Target image size under 200 MB.",
       difficulty: "beginner",
     },
     {
-      title: "BuildKit Cache Mount Benchmark",
-      desc: "Benchmark pip install with and without --mount=type=cache. Build a Python image cold (no cache) vs warm. Measure time difference. Add a new dependency and rebuild — the cache mount should only re-install the new package.",
+      title: "Multi-Stage Build: Shrink a PyTorch Inference Image",
+      desc: "Start with a naive Dockerfile that installs PyTorch + transformers (3+ GB). Refactor into multi-stage: builder stage compiles dependencies, runtime stage uses python:3.12-slim with only CPU torch wheel and the exported model. Goal: reduce from 3 GB to under 800 MB. Compare with dive.",
       difficulty: "intermediate",
     },
     {
-      title: "Multi-Service Compose Stack",
-      desc: "Build a FastAPI + PostgreSQL + Redis Compose stack. Add health checks to all services. Use depends_on: condition: service_healthy. Create a .env file for credentials. Add a profiles: [debug] pgAdmin service.",
+      title: "Docker Compose: ML Inference Stack",
+      desc: "Build a complete ML stack with Compose: FastAPI inference API, a TorchServe model server, Redis for prediction caching, PostgreSQL for request logging. Add health checks on all 4 services, use depends_on conditions, custom bridge network, named volumes for model artifacts and DB data.",
       difficulty: "intermediate",
     },
     {
-      title: "Security Hardening Audit",
-      desc: "Take your FastAPI container and apply: --cap-drop ALL, --read-only, --tmpfs /tmp, --security-opt no-new-privileges, non-root user. Scan with Trivy. Fix all CRITICAL and HIGH CVEs by changing base images. Compare before/after.",
+      title: "BuildKit Cache Mounts for ML Dependencies",
+      desc: "Benchmark builds with and without --mount=type=cache for pip, apt, and model weight downloads. Cold build vs warm build timing. Add a new Python dependency and rebuild — cache mount should only install the delta. Also cache model weights download in a separate mount target.",
       difficulty: "intermediate",
     },
     {
-      title: "Debug a Crashed Container",
-      desc: "Intentionally break a container (bad env var, missing file). Debug it using: docker logs, docker inspect, override --entrypoint to /bin/sh. Then use nsenter (PID from docker inspect) to poke around the namespace from the host.",
+      title: "Security Hardening Audit with Trivy",
+      desc: "Scan your ML inference image with Trivy. Fix all CRITICAL and HIGH CVEs by changing base images or pinning package versions. Apply runtime hardening: --cap-drop ALL, --read-only, --tmpfs /tmp, --security-opt no-new-privileges. Run before/after comparison. Integrate Trivy into a pre-push hook.",
       difficulty: "intermediate",
     },
     {
-      title: "Multi-Architecture Build",
-      desc: "Set up docker buildx with a new builder using QEMU. Build your FastAPI image for linux/amd64 AND linux/arm64 and push to Docker Hub. Verify both architectures with `docker buildx imagetools inspect`. Run on both platforms if available.",
+      title: "Multi-Architecture Build for amd64 + arm64",
+      desc: "Set up docker buildx with a new builder using QEMU. Build your ML inference image for linux/amd64 AND linux/arm64. Push to Docker Hub with a manifest list. Verify with 'docker buildx imagetools inspect'. Test on both platforms (AWS Graviton for arm64 if available).",
       difficulty: "advanced",
     },
     {
-      title: "Secrets in Build without Leaking",
-      desc: "Build an image that installs from a private PyPI server. Use --mount=type=secret to inject the token. Verify the token does NOT appear in `docker history` or any layer. Compare with a naive ARG approach (which DOES leak).",
+      title: "GPU Container Setup for Model Training",
+      desc: "Install NVIDIA Container Toolkit. Run nvidia-smi inside a container. Build a training image based on nvidia/cuda with PyTorch and your training script. Use --gpus all and verify CUDA is accessible. Set up compose with runtime: nvidia. Benchmark CPU vs GPU training time.",
       difficulty: "advanced",
     },
     {
-      title: "GitHub Actions CI Pipeline",
-      desc: "Write a GitHub Actions workflow: lint → test → docker/build-push-action with BuildKit gha cache → push to GHCR (GitHub Container Registry). Add Trivy scanning and fail the build on CRITICAL CVEs. Use docker/metadata-action for tags.",
+      title: "CI Pipeline: GitHub Actions Build + Scan + Push",
+      desc: "Write a complete GitHub Actions workflow: lint Dockerfile with hadolint, run unit tests, build with docker/build-push-action and BuildKit GHA cache, scan with Trivy (fail on CRITICAL), push to GHCR with docker/metadata-action tags (semver + git SHA). Add multi-arch build step.",
       difficulty: "advanced",
     },
     {
-      title: "Compose Watch for Dev Inner Loop",
-      desc: "Configure 'develop: watch:' in compose.yml for a FastAPI app. Use 'sync' for Python files and 'rebuild' for Dockerfile changes. Measure how fast code changes appear vs a full docker-compose up --build cycle.",
-      difficulty: "intermediate",
+      title: "Debug a Production Container Crash",
+      desc: "Given a container that OOM-kills on startup (intentionally misconfigured memory limit + large model load), debug using: docker logs, docker inspect (find OOMKilled flag), docker stats, override entrypoint to shell in. Fix by adjusting memory limits, adding swap, or lazy-loading the model. Document the debugging playbook.",
+      difficulty: "advanced",
     },
   ];
 
-  // ── Enhanced interview questions ─────────────────────────────────────────
+  // ── Interview Questions ─────────────────────────────────────────────────────
   m.interviewQuestions = [
-    "Explain how Docker containers differ from VMs at the kernel level. What Linux primitives make isolation possible?",
-    "Walk me through what happens when you run `docker build`. What is the build context and why does its size matter?",
-    "How does OverlayFS work? What are lowerdir, upperdir, and workdir? What happens when a container writes a file?",
-    "What is the PID 1 problem in containers? How do you solve it, and why does it matter for graceful shutdown?",
-    "What is the difference between CMD and ENTRYPOINT? Give an example of when you'd use both together.",
-    "An ARG value is 'not stored in the final image' — but can you still extract it? How would you pass a build-time secret safely?",
-    "Why should you always use exec form (JSON array) for CMD/ENTRYPOINT? What breaks with shell form?",
-    "A Docker image grew from 200 MB to 800 MB after a developer added a large dataset. They later deleted it in a subsequent RUN. Is the image actually smaller? Why or why not? How do you fix it?",
-    "Explain multi-stage builds. How do you use them to produce a minimal runtime image for a Python app?",
-    "What does --mount=type=cache do in BuildKit? How does it differ from a regular COPY/RUN cache layer?",
-    "You need to install packages from a private registry that requires an API token. How do you pass the token securely during build?",
-    "What is the difference between a named volume and a bind mount? When would you use each in production?",
-    "Explain the depends_on condition: service_healthy option in Docker Compose. How does it interact with HEALTHCHECK?",
-    "A container is running in production and consuming 100% CPU. Walk me through how you'd diagnose it using only Docker CLI tools.",
-    "The container died immediately and you can't exec into it. How do you debug it?",
-    "What is the difference between --cap-drop ALL and --security-opt no-new-privileges? Are they redundant?",
-    "Explain Docker's default seccomp profile. What does it block? How would you customize it for a specific workload?",
-    "What is rootless Docker? What are its security advantages and practical limitations?",
-    "You have an image that works on your amd64 laptop but fails on an arm64 EC2 Graviton instance. How do you build for both architectures from a single CI pipeline?",
-    "What is the difference between DinD, DooD, and Kaniko for running Docker builds inside Kubernetes? Which would you choose for a production CI pipeline and why?",
-    "How does BuildKit's registry cache (type=registry,mode=max) differ from the default inline cache? When would you use each?",
-    "A container's /tmp directory fills up because it's using the overlay filesystem. How do you fix this without changing the application?",
-    "Explain live-restore in daemon.json. Why would you enable it in production?",
-    "What is the difference between docker stop and docker kill? What happens during the grace period?",
-    "How would you implement image signing in a CI/CD pipeline using cosign? What does it protect against?",
+    // Fundamentals (MLE level)
+    "Explain how Docker containers differ from VMs at the kernel level. What Linux primitives (namespaces, cgroups) make isolation possible?",
+    "Walk me through what happens when you run 'docker build'. What is the build context, how do layers get created, and why does context size matter?",
+    "What is the difference between CMD and ENTRYPOINT? Show an example of using both together for a configurable ML inference container.",
+    "Why should you use exec form (JSON array) for CMD/ENTRYPOINT instead of shell form? What breaks with shell form regarding signal handling?",
+    "How does OverlayFS work in Docker? Explain lowerdir, upperdir, and what happens when a running container writes to a file from the base image.",
+
+    // Dockerfile best practices (MLE level)
+    "A developer added a 500 MB dataset in one RUN layer and deleted it in the next. The image is still huge. Why? How do you fix it?",
+    "Explain multi-stage builds. How would you use them to produce a minimal runtime image for a PyTorch inference service?",
+    "What is the difference between ARG and ENV? An ARG is 'not in the final image' — but can you still extract its value? How do you safely pass build-time secrets?",
+    "Explain the layer caching algorithm. You have a Dockerfile where COPY requirements.txt comes before COPY . — why is that ordering critical for CI build speed?",
+    "What is .dockerignore and why is it important? What happens if your build context contains a 2 GB training dataset?",
+
+    // BuildKit & advanced builds (Senior MLE level)
+    "What does --mount=type=cache do in BuildKit? How does it differ from layer caching? Give an example for ML dependency installation.",
+    "How do --mount=type=secret and --mount=type=ssh work? Why are they better than passing secrets via ARG for private PyPI registries?",
+    "Explain how multi-architecture builds work with buildx and QEMU. What is a manifest list? How do you build for both amd64 and arm64 in CI?",
+    "Compare BuildKit cache strategies for CI: inline cache, registry cache (mode=max), and GitHub Actions cache (type=gha). When would you use each?",
+
+    // Networking & volumes (Senior MLE level)
+    "What is the difference between bridge, host, and overlay network drivers? When would you use host networking for an ML workload?",
+    "Explain named volumes vs bind mounts. Which would you use for model artifacts in production? What about for development hot-reload?",
+    "A container's /tmp fills up and crashes the app. The filesystem is read-only. What happened and how do you fix it?",
+
+    // Security (Staff MLE level)
+    "Walk me through a complete security hardening strategy for an ML container: base image, user, capabilities, filesystem, seccomp, and scanning.",
+    "What is the difference between --cap-drop ALL and --security-opt no-new-privileges? Are they redundant or complementary?",
+    "Explain rootless Docker. What security advantages does it provide? What are the practical limitations for ML workloads (GPU access, port binding)?",
+    "How would you implement image signing with cosign in a CI pipeline? What supply-chain attacks does it protect against?",
+
+    // Operations & debugging (Staff MLE level)
+    "A container in production is using 100% CPU and responding slowly. Walk me through diagnosis using only Docker CLI tools (stats, top, exec, logs).",
+    "The container exits immediately with code 137. What does that mean? How do you distinguish between OOMKill and manual docker kill?",
+    "Explain live-restore in daemon.json. Why is it critical for production? What happens to running containers during a Docker daemon upgrade without it?",
+
+    // System design (Staff MLE level)
+    "Design the container architecture for an ML recommendation system: API gateway, inference service, feature store, model registry, async processing. How do containers communicate? How do you handle model updates with zero downtime?",
   ];
 
-  // ── Code examples ─────────────────────────────────────────────────────────
+  // ── Code Examples ───────────────────────────────────────────────────────────
+  // Story: Building "RecSys" — a production ML recommendation/inference system
   m.codeExamples = [
-    // ──────────────────────────────────────────────────────────────────────
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 1: Installation & Setup
+    // ═══════════════════════════════════════════════════════════════════════════
     {
       id: "install",
-      title: "Installation & Daemon Setup",
+      title: "Installation & Setup",
       icon: "⚙️",
       items: [
         {
-          title: "Install Docker Desktop on macOS",
-          desc: "Docker Desktop is the recommended way to run Docker on macOS — it bundles the daemon, CLI, BuildKit, Compose, and an optional local Kubernetes cluster.",
+          title: "Install Docker — macOS vs Linux",
+          desc: "Platform-specific installation: Docker Desktop with Homebrew on macOS, Docker Engine from the official apt repository on Ubuntu/Debian.",
           lang: "bash",
-          filename: "install-docker-macos.sh",
-          code: `# Option 1 — Homebrew (recommended for developers)
+          platforms: {
+            mac: {
+              filename: "install-docker-macos.sh",
+              code: `#!/usr/bin/env bash
+# ── Docker Desktop via Homebrew (recommended) ─────────────────────────
 brew install --cask docker
 
-# Launch Docker Desktop (first run opens the GUI for license acceptance)
+# Launch Docker Desktop (first run requires license acceptance)
 open -a Docker
 
-# Wait for the daemon to be ready, then verify
+# Wait for daemon readiness, then verify
+docker version
 docker run --rm hello-world
 
-# ── What Homebrew installs ─────────────────────────────────────────────
-# /Applications/Docker.app          ← GUI + daemon (runs a Linux VM via Apple Hypervisor)
-# /usr/local/bin/docker             ← CLI (symlinked from the app bundle)
-# /usr/local/bin/docker-compose     ← Compose v2 plugin wrapper
-# /usr/local/bin/docker-buildx      ← BuildKit CLI plugin
+# Docker Desktop installs:
+#   /Applications/Docker.app          - GUI + daemon (Linux VM via Apple Hypervisor)
+#   /usr/local/bin/docker             - CLI (symlinked from app bundle)
+#   /usr/local/bin/docker-compose     - Compose v2 plugin
+#   /usr/local/bin/docker-buildx      - BuildKit plugin
 
-# ── Optional: install CLI tools separately (without Desktop GUI) ───────
-# Docker Desktop is required for the daemon on macOS — there is no native
-# Docker Engine for macOS. The alternatives below still require a daemon:
-
-# colima: lightweight VM-based Docker daemon (good for CI or headless use)
+# ── Alternative: colima (lightweight, no GUI, good for CI) ────────────
 brew install colima docker docker-buildx docker-compose
 colima start --cpu 4 --memory 8 --disk 60
-# colima start --arch aarch64 --vm-type vz  ← Apple Silicon optimised
+# Apple Silicon optimised:
+#   colima start --arch aarch64 --vm-type vz --vz-rosetta
 
-# orbstack: fast, low-overhead Docker + Linux VMs (commercial, free tier)
-brew install --cask orbstack
+# ── Recommended Desktop settings ──────────────────────────────────────
+# Resources -> CPUs: 4+  Memory: 8 GB+  Swap: 2 GB
+# Features in Development -> Use Rosetta for x86_64/amd64 emulation
+# Kubernetes -> Enable (optional, for local K8s dev)`
+            },
+            linux: {
+              filename: "install-docker-ubuntu.sh",
+              code: `#!/usr/bin/env bash
+set -euo pipefail
 
-# ── Docker Desktop settings to tweak ──────────────────────────────────
-# Settings → Resources → CPUs / Memory   ← increase from defaults (2 CPU / 2 GB)
-# Settings → Features in development → Use Rosetta for x86_64 emulation  ← Apple Silicon
-# Settings → Kubernetes → Enable Kubernetes  ← single-node k8s for local dev`,
-          notes: [
-            "Docker Desktop on macOS runs containers inside a lightweight Linux VM (Apple Hypervisor Framework on Apple Silicon, HyperKit on Intel).",
-            "colima is a popular headless alternative — useful in CI or when you want to avoid the Docker Desktop GUI and license requirements.",
-            "On Apple Silicon (M1/M2/M3) always pull linux/arm64 images when available; use --platform linux/arm64 explicitly to avoid silent Rosetta emulation.",
-            "Docker Desktop 4.x ships Compose V2 as 'docker compose' (space, not hyphen) — the old standalone 'docker-compose' binary is deprecated.",
-          ],
-        },
-        {
-          title: "Install Docker Engine on Linux (Ubuntu/Debian)",
-          desc: "Install the official Docker Engine on Ubuntu or Debian — never use the distro's outdated package.",
-          lang: "bash",
-          filename: "install-docker-linux.sh",
-          code: `# Remove old versions
-sudo apt-get remove -y docker docker-engine docker.io containerd runc
+# ── Remove old/conflicting packages ──────────────────────────────────
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
+  sudo apt-get remove -y "\$pkg" 2>/dev/null || true
+done
 
-# Set up the official Docker repo
+# ── Add Docker official GPG key + apt repository ─────────────────────
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg \\
-  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \\
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \\
+# Add the repository
+echo \\
+  "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \\
   https://download.docker.com/linux/ubuntu \\
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \\
-  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  \$(. /etc/os-release && echo "\$VERSION_CODENAME") stable" | \\
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
+# ── Install Docker Engine + plugins ──────────────────────────────────
 sudo apt-get update
 sudo apt-get install -y \\
   docker-ce docker-ce-cli containerd.io \\
   docker-buildx-plugin docker-compose-plugin
 
-# Post-install: run Docker without sudo
+# ── Post-install: run Docker without sudo ─────────────────────────────
 sudo groupadd docker 2>/dev/null || true
-sudo usermod -aG docker $USER
+sudo usermod -aG docker "\$USER"
 newgrp docker
 
-# Verify
-docker run --rm hello-world`,
+# ── Enable on boot ───────────────────────────────────────────────────
+sudo systemctl enable docker.service
+sudo systemctl enable containerd.service
+
+# ── Verify ───────────────────────────────────────────────────────────
+docker version
+docker run --rm hello-world`
+            }
+          },
           notes: [
-            "Use docker-compose-plugin (the 'docker compose' command), not the standalone docker-compose binary.",
-            "newgrp docker applies the group change in the current shell without a full logout/login.",
-            "For RHEL/Fedora/Amazon Linux replace 'apt-get' with 'dnf' and use the centos repo URL.",
-            "On Linux, Docker Engine runs natively — no VM layer, unlike macOS or Windows.",
-          ],
+            "macOS has no native Linux kernel, so Docker Desktop runs a lightweight Linux VM via Apple Hypervisor Framework — this adds a small overhead vs bare-metal Linux.",
+            "colima is preferred for CI/headless environments because it avoids Docker Desktop licensing requirements for large organizations.",
+            "On Linux, always install from Docker's official apt repo — the distro-packaged docker.io is typically several versions behind.",
+            "The 'newgrp docker' activates the group in the current shell; alternatively log out and back in.",
+            "Never run Docker as root in production — use the docker group or rootless mode instead.",
+          ]
         },
         {
-          title: "/etc/docker/daemon.json — Production Configuration",
-          desc: "Tune the Docker daemon for production: log rotation, metrics, live-restore.",
+          title: "Production daemon.json Configuration",
+          desc: "Daemon configuration tuned for an ML inference server: log rotation, live-restore for zero-downtime daemon upgrades, storage driver, and metrics.",
           lang: "json",
-          filename: "/etc/docker/daemon.json",
+          filename: "daemon.json",
           code: `{
-  "storage-driver": "overlay2",
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "50m",
     "max-file": "5",
     "compress": "true"
   },
+  "storage-driver": "overlay2",
   "live-restore": true,
-  "userland-proxy": false,
+  "default-address-pools": [
+    { "base": "172.20.0.0/16", "size": 24 },
+    { "base": "172.21.0.0/16", "size": 24 }
+  ],
+  "default-ulimits": {
+    "nofile": { "Name": "nofile", "Hard": 65536, "Soft": 65536 },
+    "memlock": { "Name": "memlock", "Hard": -1, "Soft": -1 }
+  },
   "metrics-addr": "127.0.0.1:9323",
   "experimental": false,
-  "max-concurrent-uploads": 5,
-  "max-concurrent-downloads": 10,
-  "registry-mirrors": [],
+  "features": { "buildkit": true },
   "insecure-registries": [],
-  "default-ulimits": {
-    "nofile": { "Name": "nofile", "Hard": 64000, "Soft": 64000 }
-  },
-  "features": { "buildkit": true }
+  "registry-mirrors": [],
+  "default-runtime": "runc",
+  "runtimes": {
+    "nvidia": {
+      "path": "nvidia-container-runtime",
+      "runtimeArgs": []
+    }
+  }
 }`,
           notes: [
-            "live-restore: true keeps containers running if the daemon crashes or is upgraded.",
-            "userland-proxy: false uses iptables DNAT instead of a Go proxy for port forwarding — more performant.",
-            "json-file with max-size prevents containers from filling the disk with logs.",
-            "Apply changes: sudo systemctl restart docker (brief service disruption if live-restore is true).",
-            "metrics-addr exposes Prometheus metrics at /metrics for cAdvisor / node_exporter integration.",
-          ],
+            "log rotation (max-size + max-file) is critical — without it, container logs grow unbounded and can fill the disk, crashing the host.",
+            "live-restore keeps containers running during dockerd restarts — essential for production where daemon upgrades must not kill inference services.",
+            "memlock ulimit set to unlimited (-1) is required for ML workloads that use GPU memory or large mmap'd model files.",
+            "The nvidia runtime entry is needed for GPU containers — install NVIDIA Container Toolkit first, then add this config.",
+            "metrics-addr exposes Prometheus-compatible metrics at /metrics — scrape with Prometheus for daemon-level monitoring.",
+          ]
         },
         {
-          title: "Rootless Docker Setup",
-          desc: "Run the Docker daemon as a non-root user — best security posture for shared hosts.",
+          title: "Verify Installation & Environment",
+          desc: "Comprehensive verification that Docker, BuildKit, Compose, and networking are all working correctly before building the ML system.",
           lang: "bash",
-          filename: "setup-rootless.sh",
-          code: `# Prerequisites
-sudo apt-get install -y uidmap dbus-user-session
+          platforms: {
+            mac: {
+              filename: "verify-docker-macos.sh",
+              code: `#!/usr/bin/env bash
+set -euo pipefail
 
-# Install rootless Docker for current user
-dockerd-rootless-setuptool.sh install
+echo "=== Docker Version ==="
+docker version --format '{{.Server.Version}}'
 
-# Set env in your shell profile
-echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
-echo 'export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock' >> ~/.bashrc
-source ~/.bashrc
+echo "=== BuildKit Enabled ==="
+docker buildx version
 
-# Start the rootless daemon via systemd user service
-systemctl --user start docker
-systemctl --user enable docker
-sudo loginctl enable-linger $USER
+echo "=== Compose Version ==="
+docker compose version
 
-# Verify
-docker info | grep "rootless"
-# Should output: rootless: true
+echo "=== System Info ==="
+docker info --format '{{.OSType}}/{{.Architecture}} | Storage: {{.Driver}} | Runtimes: {{range .Runtimes}}{{.Path}} {{end}}'
 
-# Limitation: ports < 1024 require net.ipv4.ip_unprivileged_port_start=0
-sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0`,
+echo "=== Run Test Container ==="
+docker run --rm alpine:3.19 sh -c 'echo "Container OK: $(uname -m)"'
+
+echo "=== Network Test ==="
+docker network create --driver bridge test-net 2>/dev/null || true
+docker run --rm --network test-net alpine:3.19 sh -c 'nslookup host.docker.internal || echo "DNS OK (host resolution available on Desktop)"'
+docker network rm test-net 2>/dev/null || true
+
+echo "=== Disk Usage ==="
+docker system df
+
+echo "All checks passed. Ready to build RecSys."`
+            },
+            linux: {
+              filename: "verify-docker-linux.sh",
+              code: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Docker Version ==="
+docker version --format '{{.Server.Version}}'
+
+echo "=== BuildKit Enabled ==="
+docker buildx version
+
+echo "=== Compose Version ==="
+docker compose version
+
+echo "=== System Info ==="
+docker info --format '{{.OSType}}/{{.Architecture}} | Storage: {{.Driver}} | Cgroup: {{.CgroupDriver}} {{.CgroupVersion}}'
+
+echo "=== Run Test Container ==="
+docker run --rm alpine:3.19 sh -c 'echo "Container OK: \$(uname -m)"'
+
+echo "=== Network Test ==="
+docker network create --driver bridge test-net 2>/dev/null || true
+docker run --rm --network test-net alpine:3.19 ping -c 1 -W 2 8.8.8.8
+docker network rm test-net 2>/dev/null || true
+
+echo "=== GPU Check (optional) ==="
+if command -v nvidia-smi &>/dev/null; then
+  docker run --rm --gpus all nvidia/cuda:12.3.1-base-ubuntu22.04 nvidia-smi --query-gpu=name,memory.total --format=csv
+else
+  echo "No NVIDIA GPU detected (install nvidia-container-toolkit for GPU support)"
+fi
+
+echo "=== Disk Usage ==="
+docker system df
+
+echo "All checks passed. Ready to build RecSys."`
+            }
+          },
           notes: [
-            "Rootless Docker maps container root → your UID using /etc/subuid and /etc/subgid.",
-            "Containers running as 'root' inside are actually your UID on the host — escapes are contained.",
-            "Limitation: overlayfs may require newuidmap/newgidmap; performance is slightly lower.",
-            "Preferred over --userns-remap because it applies to the entire daemon.",
-          ],
+            "Always verify BuildKit is available — it provides cache mounts, secrets, and parallel stage builds that dramatically improve ML image build times.",
+            "On macOS, host.docker.internal resolves to the host machine — useful for connecting containers to services running on the host during development.",
+            "The GPU check on Linux verifies nvidia-container-toolkit is installed and working — required for any ML training or GPU inference containers.",
+            "docker system df shows how much disk images, containers, and build cache consume — ML images are large, so monitor this regularly.",
+          ]
         },
-      ],
+      ]
     },
 
-    // ──────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 2: Your First Dockerfile — ML Inference API
+    // ═══════════════════════════════════════════════════════════════════════════
     {
-      id: "dockerfile-ref",
-      title: "Dockerfile — Full Instructions Reference",
-      icon: "📄",
+      id: "first-dockerfile",
+      title: "Your First Dockerfile — ML Inference API",
+      icon: "📦",
       items: [
         {
-          title: "All Dockerfile Instructions — Annotated Reference",
-          desc: "Every instruction you'll ever need, with production notes on each.",
+          title: "The Bad Dockerfile (Anti-Patterns)",
+          desc: "A naive Dockerfile for an ML inference API that contains every common mistake. Each anti-pattern is marked with a comment explaining why it is wrong.",
           lang: "docker",
-          filename: "Dockerfile.reference",
-          code: `# syntax=docker/dockerfile:1
-# ↑ Pin BuildKit frontend version — enables all modern features
+          filename: "Dockerfile.bad",
+          code: `# BAD: Using :latest tag — not reproducible across builds
+FROM python:latest
 
-# ── FROM ──────────────────────────────────────────────────────────────
-# Use a specific digest for reproducible builds (not just a tag)
-FROM python:3.12-slim-bookworm AS base
-# FROM python:3.12-slim-bookworm@sha256:abc123...  ← pinned by digest
+# BAD: Running as root (default) — security risk
+# BAD: No WORKDIR set — files go to / which is messy
 
-# ── LABEL ─────────────────────────────────────────────────────────────
-# OCI standard labels for image metadata
-LABEL org.opencontainers.image.title="My App" \\
-      org.opencontainers.image.version="1.0.0" \\
-      org.opencontainers.image.source="https://github.com/org/repo"
-
-# ── ARG ───────────────────────────────────────────────────────────────
-# Build-time variable; does NOT persist in final image
-# WARNING: still visible in docker history — do NOT use for secrets
-ARG BUILD_VERSION=dev
-ARG TARGETARCH   # automatically set by buildx for multi-arch builds
-
-# ── ENV ───────────────────────────────────────────────────────────────
-# Runtime environment variable; persists in image and containers
-ENV PYTHONUNBUFFERED=1 \\
-    PYTHONDONTWRITEBYTECODE=1 \\
-    PIP_NO_CACHE_DIR=1 \\
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# ── WORKDIR ───────────────────────────────────────────────────────────
-# Always use absolute paths; creates the directory automatically
+# BAD: Copying everything first breaks layer caching
+# Any code change invalidates pip install cache
+COPY . /app
 WORKDIR /app
 
-# ── COPY ──────────────────────────────────────────────────────────────
-# Prefer COPY over ADD (ADD has surprising behavior with URLs/tarballs)
-# Copy requirements FIRST to maximize cache hits
-COPY --chown=app:app requirements.txt .
+# BAD: Not pinning package versions — builds break over time
+# BAD: pip cache left in layer — wasted 200+ MB
+# BAD: Installing dev dependencies in production image
+RUN pip install -r requirements.txt
 
-# ── RUN ───────────────────────────────────────────────────────────────
-# Exec form (array): no shell, signals work correctly
-# Shell form: wraps in /bin/sh -c, breaks signal propagation
-# Combine related commands into one RUN to minimize layers
-RUN apt-get update \\
-    && apt-get install -y --no-install-recommends \\
-       libpq5 curl \\
-    && rm -rf /var/lib/apt/lists/* \\
-    && pip install --no-cache-dir -r requirements.txt
+# BAD: Using requirements.txt with unpinned versions
+# (e.g., torch>=2.0 instead of torch==2.2.1)
 
-# ── USER ──────────────────────────────────────────────────────────────
-# Create a non-root user; use numeric UID to avoid name resolution issues
-RUN groupadd --gid 1001 app \\
-    && useradd --uid 1001 --gid app --shell /bin/sh --create-home app
+# BAD: Model file baked into image — 500 MB+ per rebuild
+# BAD: No .dockerignore — build context sends .git, __pycache__, .venv
+COPY models/recommendation_model.pkl /app/models/
 
-# ── COPY remaining source ─────────────────────────────────────────────
-COPY --chown=app:app . .
-
-USER 1001
-
-# ── EXPOSE ────────────────────────────────────────────────────────────
-# Documentation only — does NOT actually publish the port
+# BAD: EXPOSE does nothing for security — just documentation
 EXPOSE 8000
 
-# ── HEALTHCHECK ───────────────────────────────────────────────────────
-# --start-period: grace time before health checks matter
-# exit 0 = healthy, exit 1 = unhealthy
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=20s \\
-  CMD curl -f http://localhost:8000/health || exit 1
+# BAD: Shell form wraps in /bin/sh — PID 1 problem
+# Signals (SIGTERM) go to shell, not uvicorn — no graceful shutdown
+CMD python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
-# ── STOPSIGNAL ────────────────────────────────────────────────────────
-# Override the signal sent on docker stop (default SIGTERM)
-# Nginx uses SIGQUIT for graceful shutdown
-STOPSIGNAL SIGTERM
-
-# ── VOLUME ────────────────────────────────────────────────────────────
-# Declare a mount point — creates anonymous volume if no -v given
-# Generally avoid in production; use explicit named volumes instead
-# VOLUME ["/data"]
-
-# ── ENTRYPOINT + CMD ──────────────────────────────────────────────────
-# ENTRYPOINT: the executable (cannot be overridden without --entrypoint)
-# CMD: default arguments to ENTRYPOINT (easily overridden)
-# Together: ENTRYPOINT + CMD = full command
-ENTRYPOINT ["uvicorn"]
-CMD ["main:app", "--host", "0.0.0.0", "--port", "8000"]`,
+# BAD: No HEALTHCHECK — orchestrator cannot detect unhealthy state
+# BAD: No LABEL — no metadata for image management
+# BAD: No .dockerignore — huge build context
+# Total issues: 12+ anti-patterns`,
           notes: [
-            "The '# syntax=docker/dockerfile:1' directive is crucial — it unlocks all BuildKit features like --mount.",
-            "Shell form CMD ('CMD uvicorn main:app') wraps in /bin/sh -c, making /bin/sh PID 1. SIGTERM goes to sh, not uvicorn. Always use exec form.",
-            "ARG before FROM is available only to FROM. ARG after FROM has a different scope. Redeclare if you need it post-FROM.",
-            "ENV variables set during build persist in running containers and are visible via docker inspect. Never put secrets here.",
-          ],
+            "The :latest tag is mutable — it points to whatever was pushed last. Two builds a week apart can produce completely different images.",
+            "Running as root means a container escape gives the attacker root on the host (unless user namespace remapping is enabled).",
+            "COPY . before pip install means every code change invalidates the pip cache layer, forcing a full reinstall on every build (minutes wasted).",
+            "Shell form CMD (no JSON array) runs via /bin/sh -c, which does not forward SIGTERM to the child process — the container gets SIGKILL after the grace period.",
+            "Without a HEALTHCHECK, Docker (and Kubernetes) cannot distinguish between a running but broken container and a healthy one.",
+          ]
         },
         {
-          title: ".dockerignore — Comprehensive Example",
-          desc: "Exclude everything that shouldn't be in the build context or image.",
+          title: "The Good Dockerfile (Production-Grade)",
+          desc: "Production-grade multi-stage Dockerfile for the RecSys inference API. Non-root user, pinned versions, proper layer ordering, health check, and OCI labels.",
+          lang: "docker",
+          filename: "Dockerfile",
+          code: `# syntax=docker/dockerfile:1.7
+# ──────────────────────────────────────────────────────────────────────
+# RecSys Inference API — Production Dockerfile
+# Multi-stage: builder (compile deps) -> runtime (minimal)
+# ──────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Builder ─────────────────────────────────────────────────
+FROM python:3.12.3-slim-bookworm AS builder
+
+WORKDIR /build
+
+# Install system build dependencies (cleaned up, not carried to runtime)
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+      build-essential \\
+      libpq-dev \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency specs first — cache this layer across code changes
+COPY requirements.lock ./requirements.txt
+
+# Install Python deps into a virtualenv (easy to copy to runtime)
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH"
+
+# Cache pip downloads between builds (BuildKit)
+RUN --mount=type=cache,target=/root/.cache/pip \\
+    pip install --no-compile -r requirements.txt
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────────
+FROM python:3.12.3-slim-bookworm AS runtime
+
+# OCI image labels for metadata
+LABEL org.opencontainers.image.title="recsys-inference" \\
+      org.opencontainers.image.description="ML Recommendation Inference API" \\
+      org.opencontainers.image.source="https://github.com/company/recsys" \\
+      org.opencontainers.image.version="1.0.0"
+
+# Install only runtime system dependencies
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+      libpq5 \\
+      curl \\
+      tini \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd --gid 1000 recsys && \\
+    useradd --uid 1000 --gid recsys --shell /bin/bash --create-home recsys
+
+WORKDIR /app
+
+# Copy virtualenv from builder (only runtime packages, no build tools)
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH" \\
+    PYTHONDONTWRITEBYTECODE=1 \\
+    PYTHONUNBUFFERED=1
+
+# Copy application code (after deps — code changes don't bust dep cache)
+COPY --chown=recsys:recsys ./src /app/src
+COPY --chown=recsys:recsys ./main.py /app/
+
+# Model files loaded at runtime from volume mount, NOT baked into image
+# Mount point: /app/models (see compose.yml or docker run -v)
+RUN mkdir -p /app/models && chown recsys:recsys /app/models
+VOLUME ["/app/models"]
+
+# Switch to non-root user
+USER recsys
+
+# Expose port (documentation only)
+EXPOSE 8000
+
+# Health check — FastAPI /health endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \\
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Use tini as PID 1 for proper signal handling and zombie reaping
+ENTRYPOINT ["tini", "--"]
+
+# Exec form — uvicorn receives SIGTERM directly for graceful shutdown
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]`,
+          notes: [
+            "Multi-stage builds reduce image size dramatically: build tools (gcc, make) are only in the builder stage and never appear in the final image.",
+            "requirements.lock is copied before source code — code changes only rebuild the COPY + CMD layers, not the slow pip install layer.",
+            "tini as PID 1 solves two problems: forwarding SIGTERM to child processes for graceful shutdown, and reaping zombie processes.",
+            "The /app/models VOLUME is a mount point — models are loaded from external storage (named volume or bind mount), not baked into the image. This keeps images small and allows model updates without rebuilds.",
+            "PYTHONDONTWRITEBYTECODE=1 prevents .pyc files (saves space); PYTHONUNBUFFERED=1 ensures logs appear immediately in docker logs.",
+          ]
+        },
+        {
+          title: ".dockerignore",
+          desc: "Exclude unnecessary files from the build context. Without this, Docker sends everything (including .git, datasets, and virtual envs) to the daemon — adding minutes to build time.",
           lang: "bash",
           filename: ".dockerignore",
           code: `# Version control
 .git
 .gitignore
-.gitattributes
 
-# Python
+# Python artifacts
 __pycache__
 *.pyc
 *.pyo
-*.pyd
-.Python
+.mypy_cache
+.pytest_cache
+.ruff_cache
 *.egg-info
-dist/
-build/
-.eggs/
+dist
+build
+
+# Virtual environments
 .venv
-venv/
-env/
-pip-wheel-metadata/
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-htmlcov/
-.coverage
-coverage.xml
+venv
+env
 
-# Node
-node_modules/
-npm-debug.log*
-yarn-error.log*
-.npm/
-
-# IDE & OS
-.idea/
-.vscode/
+# IDE
+.vscode
+.idea
 *.swp
 *.swo
-.DS_Store
-Thumbs.db
-*.iml
 
-# Docker
+# Docker files (don't send Dockerfiles into context)
 Dockerfile*
 docker-compose*.yml
+compose*.yml
 .dockerignore
 
-# Secrets & config
+# ML artifacts (models loaded from volumes, not baked in)
+models/
+*.pkl
+*.pt
+*.onnx
+*.safetensors
+data/
+datasets/
+
+# Notebooks and docs
+*.ipynb
+*.md
+docs/
+notebooks/
+
+# Environment and secrets (NEVER send to build context)
 .env
 .env.*
 *.pem
 *.key
-*.cert
-*.crt
-secrets/
 credentials/
 
-# Docs & tests (exclude from runtime image)
-docs/
-tests/
-*.md
-*.txt
-!requirements.txt
-!requirements-*.txt
-
-# CI
-.github/
-.gitlab-ci.yml
-.circleci/
-Makefile`,
+# OS files
+.DS_Store
+Thumbs.db`,
           notes: [
-            "The build context is the entire directory sent to the daemon before any instruction runs. A large .git history adds seconds to every build.",
-            "Note the '!requirements.txt' exception — the '!' prefix negates a previous exclusion pattern.",
-            "Excluding tests/ and docs/ keeps the runtime image lean AND speeds up builds by reducing context size.",
-            "'.venv' is critical — if accidentally copied it can be gigabytes and break the image (wrong platform binaries).",
-          ],
+            "Without .dockerignore, a .git directory alone can add 100+ MB to build context, and a models/ directory can add gigabytes — all transferred to the daemon on every build.",
+            "Excluding Dockerfile* prevents sending Dockerfiles into the context (they are already available to the build engine separately).",
+            "NEVER include .env or credential files in build context — even if you do not COPY them, they are sent to the daemon and could leak in build logs.",
+            "Excluding *.pkl, *.pt, *.onnx prevents accidentally baking model files into images — models should always be loaded from volumes or downloaded at startup.",
+          ]
         },
         {
-          title: "Layer Caching — Wrong vs Right Order",
-          desc: "Cache busting is the #1 cause of slow builds. Order instructions by change frequency.",
-          lang: "docker",
-          filename: "Dockerfile.cache-comparison",
-          code: `# ── BAD: copies all source first, busts cache on every change ─────────
-FROM python:3.12-slim AS bad
-WORKDIR /app
-COPY . .                          # ← EVERY file change invalidates ALL subsequent layers
-RUN pip install -r requirements.txt  # ← reinstalls on every source change: SLOW
+          title: "Build, Run, and Verify",
+          desc: "Build the production image, run it with proper resource limits, and verify it works end-to-end.",
+          lang: "bash",
+          filename: "build-and-run.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
 
+IMAGE="recsys-inference"
+TAG="1.0.0"
 
-# ── GOOD: copy requirements first, source second ──────────────────────
-FROM python:3.12-slim AS good
-WORKDIR /app
-COPY requirements.txt .           # ← only changes when deps change
-RUN pip install -r requirements.txt  # ← cached unless requirements.txt changes
-COPY . .                          # ← source changes don't affect pip layer above
-CMD ["python", "main.py"]
+# ── Build with BuildKit (progress=plain shows full output) ────────────
+DOCKER_BUILDKIT=1 docker build \\
+  --tag "\$IMAGE:\$TAG" \\
+  --tag "\$IMAGE:latest" \\
+  --file Dockerfile \\
+  --progress=plain \\
+  .
 
+# ── Verify image metadata ────────────────────────────────────────────
+echo "=== Image size ==="
+docker images "\$IMAGE:\$TAG" --format "{{.Repository}}:{{.Tag}} — {{.Size}}"
 
-# ── BEST: BuildKit cache mount (stays cached between builds) ──────────
-# syntax=docker/dockerfile:1
-FROM python:3.12-slim AS best
-WORKDIR /app
-COPY requirements.txt .
-# --mount=type=cache persists the pip cache dir on the build host
-# Even a cold build on a new machine benefits from the warmed cache
-RUN --mount=type=cache,target=/root/.cache/pip \\
-    pip install -r requirements.txt
-COPY . .
-CMD ["python", "main.py"]
+echo "=== Image labels ==="
+docker inspect "\$IMAGE:\$TAG" --format '{{json .Config.Labels}}' | python3 -m json.tool
 
+echo "=== Non-root user check ==="
+docker inspect "\$IMAGE:\$TAG" --format '{{.Config.User}}'
+# Should output: recsys
 
-# ── Rules for cache ordering ──────────────────────────────────────────
-# 1. Install system deps (changes rarely)
-# 2. Copy dependency manifest (requirements.txt, package.json)
-# 3. Install dependencies (pip install, npm install)
-# 4. Copy application source (changes frequently)
-# 5. Build/compile source (if needed)
-# 6. Set runtime config (CMD, ENV, ENTRYPOINT)`,
+echo "=== Health check configured ==="
+docker inspect "\$IMAGE:\$TAG" --format '{{json .Config.Healthcheck}}' | python3 -m json.tool
+
+# ── Run with resource limits ──────────────────────────────────────────
+docker run -d \\
+  --name recsys-api \\
+  --publish 8000:8000 \\
+  --memory 2g \\
+  --memory-swap 2g \\
+  --cpus 2.0 \\
+  --pids-limit 256 \\
+  --read-only \\
+  --tmpfs /tmp:rw,noexec,nosuid,size=100m \\
+  --cap-drop ALL \\
+  --security-opt no-new-privileges \\
+  --restart unless-stopped \\
+  --volume recsys-models:/app/models:ro \\
+  --env-file .env.production \\
+  "\$IMAGE:\$TAG"
+
+# ── Wait for healthy, then test ───────────────────────────────────────
+echo "Waiting for container to become healthy..."
+for i in \$(seq 1 30); do
+  STATUS=\$(docker inspect recsys-api --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+  if [ "\$STATUS" = "healthy" ]; then
+    echo "Container is healthy after \${i}s"
+    break
+  fi
+  sleep 1
+done
+
+echo "=== Test inference endpoint ==="
+curl -s http://localhost:8000/health | python3 -m json.tool
+curl -s -X POST http://localhost:8000/predict \\
+  -H "Content-Type: application/json" \\
+  -d '{"user_id": "u123", "context": {"page": "home"}}' | python3 -m json.tool
+
+echo "=== Container resource usage ==="
+docker stats recsys-api --no-stream --format "CPU: {{.CPUPerc}} | MEM: {{.MemUsage}} | PIDs: {{.PIDs}}"`,
           notes: [
-            "The Docker build cache is keyed on: instruction + all previous layers + COPY checksum (for COPY).",
-            "A cache miss on layer N invalidates ALL layers N+1 onwards — even if those files didn't change.",
-            "With BuildKit cache mounts, the pip cache directory survives between builds on the same host, reducing installs from 60s → 5s on a warm cache.",
-          ],
+            "--memory and --memory-swap set to the same value disables swap inside the container — ML workloads should fail fast on OOM rather than swap to disk and become unresponsive.",
+            "--read-only with --tmpfs /tmp gives a read-only root filesystem while allowing the app to write temporary files — prevents attackers from modifying the filesystem.",
+            "--cap-drop ALL removes all Linux capabilities; the inference API needs none. Add back specific capabilities only if required (e.g., NET_BIND_SERVICE for port 80).",
+            "The model volume is mounted :ro (read-only) — the inference service should never modify model files. A separate process handles model updates.",
+            "--pids-limit 256 prevents fork bombs — if a dependency has a bug that spawns unlimited processes, this limit protects the host.",
+          ]
         },
-      ],
+      ]
     },
 
-    // ──────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 3: Multi-Stage Builds for ML
+    // ═══════════════════════════════════════════════════════════════════════════
     {
-      id: "prod-dockerfiles",
-      title: "Production-Grade Dockerfiles",
+      id: "multistage",
+      title: "Multi-Stage Builds for ML",
       icon: "🏗️",
       items: [
         {
-          title: "FastAPI — Production Multi-Stage Build",
-          desc: "Builder compiles deps + copies source. Runtime stage is minimal, non-root, with health check.",
+          title: "PyTorch Model Serving — Optimised Multi-Stage",
+          desc: "A production Dockerfile for serving a PyTorch recommendation model. Builder stage compiles C extensions and installs full PyTorch; runtime stage uses CPU-only torch wheel on slim base.",
           lang: "docker",
-          filename: "Dockerfile",
-          code: `# syntax=docker/dockerfile:1
-# ── Stage 1: dependency builder ───────────────────────────────────────
-FROM python:3.12-slim-bookworm AS builder
+          filename: "Dockerfile.torch-inference",
+          code: `# syntax=docker/dockerfile:1.7
+# ──────────────────────────────────────────────────────────────────────
+# RecSys PyTorch Inference — Multi-Stage Build
+# Goal: 3.2 GB naive -> ~850 MB optimised
+# ──────────────────────────────────────────────────────────────────────
 
-WORKDIR /app
+# ── Stage 1: Builder — full build environment ────────────────────────
+FROM python:3.12.3-slim-bookworm AS builder
 
-# Install build tools (only in builder stage — not in final image)
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-    build-essential libpq-dev curl \\
+WORKDIR /build
+
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+      build-essential \\
+      libpq-dev \\
+      git \\
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast dependency resolution (10-100x faster than pip)
-RUN pip install --no-cache-dir uv
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH"
 
-# Install dependencies into /app/.venv using uv
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/uv \\
-    uv venv .venv && \\
-    uv pip install --python .venv -r requirements.txt
+# Install PyTorch CPU-only (no CUDA runtime — saves 1.5 GB+)
+# Pin exact versions for reproducibility
+RUN --mount=type=cache,target=/root/.cache/pip \\
+    pip install \\
+      torch==2.2.1+cpu \\
+      --index-url https://download.pytorch.org/whl/cpu
 
-# ── Stage 2: runtime ──────────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS runtime
+# Install remaining dependencies
+COPY requirements.lock ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \\
+    pip install --no-compile -r requirements.txt
 
-# Runtime system deps only (libpq for psycopg, not libpq-dev)
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-    libpq5 curl \\
-    && rm -rf /var/lib/apt/lists/* \\
-    && apt-get clean
+# ── Stage 2: Export model to TorchScript (optional build stage) ──────
+FROM builder AS model-export
 
-# Create non-root user with fixed UID/GID for predictable permissions
-RUN groupadd --gid 1001 appuser \\
-    && useradd --uid 1001 --gid 1001 --no-create-home appuser
+COPY ./src /build/src
+COPY ./scripts/export_model.py /build/
+
+# Convert model to TorchScript for production serving
+# This removes dependency on the model class definition at runtime
+RUN python export_model.py \\
+    --input /build/src/models/recommendation_model.py \\
+    --output /build/model_scripted.pt \\
+    --format torchscript
+
+# ── Stage 3: Runtime — minimal production image ─────────────────────
+FROM python:3.12.3-slim-bookworm AS runtime
+
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+      libpq5 \\
+      libgomp1 \\
+      curl \\
+      tini \\
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --gid 1000 recsys && \\
+    useradd --uid 1000 --gid recsys --shell /bin/bash --create-home recsys
 
 WORKDIR /app
 
-# Copy only the virtualenv and source — not build tools
-COPY --from=builder --chown=1001:1001 /app/.venv ./.venv
-COPY --chown=1001:1001 . .
-
-# Activate the venv by prepending to PATH
-ENV PATH="/app/.venv/bin:$PATH" \\
+# Copy only the virtualenv (no build tools, no source code for build)
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH" \\
+    PYTHONDONTWRITEBYTECODE=1 \\
     PYTHONUNBUFFERED=1 \\
-    PYTHONDONTWRITEBYTECODE=1
+    OMP_NUM_THREADS=4 \\
+    TORCH_NUM_THREADS=4
 
-USER 1001
+# Copy application code
+COPY --chown=recsys:recsys ./src /app/src
+COPY --chown=recsys:recsys ./main.py /app/
+
+# Model directory — loaded from volume or copied from export stage
+RUN mkdir -p /app/models && chown recsys:recsys /app/models
+
+USER recsys
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \\
+    CMD curl -f http://localhost:8000/health || exit 1
+
+ENTRYPOINT ["tini", "--"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]`,
+          notes: [
+            "The CPU-only PyTorch wheel (torch+cpu) saves 1.5+ GB over the default CUDA-bundled wheel. For GPU inference, use a separate nvidia/cuda base image instead.",
+            "OMP_NUM_THREADS and TORCH_NUM_THREADS limit parallelism to match container CPU allocation — without this, PyTorch tries to use all host CPUs, causing contention in multi-container environments.",
+            "libgomp1 (OpenMP runtime) is required for PyTorch even in CPU mode — missing it causes cryptic 'cannot find libgomp' errors at import time.",
+            "The optional model-export stage converts the model to TorchScript format, which removes the dependency on the Python model class at runtime and enables JIT optimisations.",
+            "start-period=30s in HEALTHCHECK gives the model time to load into memory before health checks begin — large models can take 10-20 seconds to initialise.",
+          ]
+        },
+        {
+          title: "Distroless Final Stage — Minimal Attack Surface",
+          desc: "Using Google's distroless image as the final stage eliminates the shell, package manager, and all OS utilities — dramatically reducing the attack surface.",
+          lang: "docker",
+          filename: "Dockerfile.distroless",
+          code: `# syntax=docker/dockerfile:1.7
+# ──────────────────────────────────────────────────────────────────────
+# Distroless variant — no shell, no package manager, no OS utils
+# Trade-off: harder to debug, but much more secure
+# ──────────────────────────────────────────────────────────────────────
+
+# ── Builder (same as before) ─────────────────────────────────────────
+FROM python:3.12.3-slim-bookworm AS builder
+
+WORKDIR /build
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH"
+
+COPY requirements.lock ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \\
+    pip install \\
+      torch==2.2.1+cpu \\
+      --index-url https://download.pytorch.org/whl/cpu && \\
+    pip install --no-compile -r requirements.txt
+
+# ── Runtime: distroless Python ───────────────────────────────────────
+FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
+
+# No apt, no shell, no curl — just the Python runtime
+WORKDIR /app
+
+COPY --from=builder /opt/venv/lib/python3.12/site-packages /opt/venv/lib/python3.12/site-packages
+ENV PYTHONPATH="/opt/venv/lib/python3.12/site-packages" \\
+    PYTHONDONTWRITEBYTECODE=1 \\
+    PYTHONUNBUFFERED=1
+
+COPY ./src /app/src
+COPY ./main.py /app/
+
+# Distroless :nonroot tag runs as uid 65534 by default
+# No need for USER instruction
 
 EXPOSE 8000
 
-# Health check hits your /health endpoint
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=15s \\
-  CMD curl -f http://localhost:8000/health || exit 1
+# No curl available — use a Python-based health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \\
+    CMD ["python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
 
-# Exec form — signals go directly to uvicorn, not via shell
-ENTRYPOINT ["uvicorn", "app.main:app"]
-CMD ["--host", "0.0.0.0", "--port", "8000", "--workers", "1"]`,
+# No shell — must use exec form (JSON array)
+ENTRYPOINT ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]`,
           notes: [
-            "Two-stage: builder has libpq-dev + build-essential (adds ~200 MB); runtime has only libpq5 (~5 MB). Final image ~120 MB vs ~400 MB single-stage.",
-            "uv is a Rust-based pip replacement — 10-100x faster for cold installs. Compatible with requirements.txt.",
-            "--mount=type=cache on /root/.cache/uv persists the download cache between builds without adding it to the image.",
-            "Pinning UID/GID to 1001 means volume mounts with matching host UID don't have permission issues.",
-            "ENTRYPOINT + CMD split lets you override just the port: docker run myapp --port 9000",
-          ],
+            "Distroless images contain only the language runtime and your app — no shell, no package manager, no ls/cat/curl. This eliminates most post-exploitation tools an attacker would use.",
+            "Debugging distroless containers requires ephemeral debug containers: docker run --pid=container:TARGET --net=container:TARGET nicolaka/netshoot.",
+            "The :nonroot tag variant runs as uid 65534 (nobody) by default — no need for explicit USER instruction.",
+            "Health checks cannot use curl (not installed). Use a Python-based check or rely on an external probe (e.g., Kubernetes liveness probe hitting the endpoint).",
+            "Trade-off: distroless saves ~30-50 MB and removes attack surface, but makes debugging significantly harder. Best for production; use slim for staging/debug environments.",
+          ]
         },
         {
-          title: "Go — Scratch Image (Zero OS)",
-          desc: "Compile a Go binary statically, ship it with zero base OS. Final image is just the binary.",
-          lang: "docker",
-          filename: "Dockerfile.go",
-          code: `# syntax=docker/dockerfile:1
-FROM golang:1.23-alpine AS builder
-
-WORKDIR /app
-
-# Download modules first (cached separately from source)
-COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \\
-    go mod download
-
-COPY . .
-
-# Build a fully static binary
-# CGO_ENABLED=0: no C bindings (no glibc dependency)
-# -trimpath: remove local path info from binary (reproducibility)
-# -ldflags: strip debug symbols (-s) and DWARF info (-w) → smaller binary
-RUN --mount=type=cache,target=/go/pkg/mod \\
-    --mount=type=cache,target=/root/.cache/go-build \\
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \\
-    go build -trimpath \\
-    -ldflags="-s -w -X main.version=$(git describe --tags --always)" \\
-    -o /bin/server ./cmd/server
-
-# ── Runtime: scratch (literally empty filesystem) ─────────────────────
-FROM scratch AS runtime
-
-# Copy CA certificates for HTTPS (scratch has none)
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-# Copy the static binary
-COPY --from=builder /bin/server /server
-
-# Scratch has no shell, no exec, no tools — that's the point
-EXPOSE 8080
-
-ENTRYPOINT ["/server"]`,
-          notes: [
-            "Final image is ~8 MB vs ~300 MB for a normal Go image. Attack surface: exactly one binary.",
-            "CGO_ENABLED=0 is critical — with CGO the binary links against glibc which scratch doesn't have.",
-            "Go module cache mount: first build downloads modules; subsequent builds reuse them from cache even for clean builds.",
-            "Scratch has no /tmp, no passwd, no resolv.conf — your app must handle all of this itself.",
-            "For apps needing DNS or TLS: copy ca-certificates.crt and /etc/resolv.conf from builder stage.",
-          ],
-        },
-        {
-          title: "Python — Distroless Runtime",
-          desc: "Google's distroless images contain only runtime libs, no shell or package manager.",
-          lang: "docker",
-          filename: "Dockerfile.distroless",
-          code: `# syntax=docker/dockerfile:1
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-
-RUN pip install --no-cache-dir uv
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/uv \\
-    uv venv /opt/venv && \\
-    uv pip install --python /opt/venv -r requirements.txt
-
-COPY . .
-
-# ── Distroless Python runtime ─────────────────────────────────────────
-# gcr.io/distroless/python3: Python runtime only, no shell, no apt, no bash
-# Available tags: latest, 3.11, 3.12, debug (has busybox shell for debugging)
-FROM gcr.io/distroless/python3-debian12 AS runtime
-
-# Non-root user is the default in distroless (65532:65532 = nonroot)
-WORKDIR /app
-
-COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /app .
-
-ENV PATH="/opt/venv/bin:$PATH" \\
-    PYTHONUNBUFFERED=1
-
-# No shell in distroless — must use exec form
-ENTRYPOINT ["/opt/venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]`,
-          notes: [
-            "Distroless has no shell, no apt, no curl. You cannot 'docker exec -it ... /bin/bash'. Use the ':debug' tag variant during development.",
-            "Attack surface is dramatically reduced — no shell means no remote code execution via shell injection.",
-            "Vulnerability scanners will report far fewer CVEs because most come from unused system packages.",
-            "For debugging production issues, temporarily swap to the ':debug' tag which adds busybox.",
-          ],
-        },
-      ],
-    },
-
-    // ──────────────────────────────────────────────────────────────────────
-    {
-      id: "buildkit",
-      title: "BuildKit Advanced Features",
-      icon: "⚡",
-      items: [
-        {
-          title: "Cache Mounts — Speed Up Package Installs",
-          desc: "Persistent cache between builds on the same host. The single biggest build speedup.",
-          lang: "docker",
-          filename: "Dockerfile.cache-mounts",
-          code: `# syntax=docker/dockerfile:1
-FROM python:3.12-slim AS python-example
-
-WORKDIR /app
-COPY requirements.txt .
-
-# --mount=type=cache,target=PATH
-# - The cache dir persists on the build HOST between builds
-# - It does NOT appear in the final image layers
-# - id= lets multiple Dockerfiles share the same cache
-# - sharing=locked prevents concurrent build corruption
-RUN --mount=type=cache,target=/root/.cache/pip,id=pip-cache,sharing=locked \\
-    pip install -r requirements.txt
-
-COPY . .
-
-# ── apt cache mount ───────────────────────────────────────────────────
-FROM ubuntu:24.04 AS apt-example
-
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \\
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \\
-    apt-get update && apt-get install -y --no-install-recommends \\
-    build-essential curl git \\
-    && rm -rf /var/lib/apt/lists/*
-# Note: apt lists are NOT cached (they expire), only the .deb packages are
-
-# ── npm cache mount ───────────────────────────────────────────────────
-FROM node:22-alpine AS node-example
-
-WORKDIR /app
-COPY package.json package-lock.json ./
-
-RUN --mount=type=cache,target=/root/.npm \\
-    npm ci --prefer-offline
-
-COPY . .
-RUN npm run build
-
-# ── Cargo (Rust) cache mount ──────────────────────────────────────────
-FROM rust:1.82-alpine AS rust-example
-
-WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
-# Create dummy src to allow dependency compilation
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-
-RUN --mount=type=cache,target=/usr/local/cargo/registry \\
-    --mount=type=cache,target=/app/target \\
-    cargo build --release
-# Only recompiles YOUR code on source changes, not all dependencies`,
-          notes: [
-            "Without cache mounts: every build re-downloads all packages from the internet. With: only new/changed packages are fetched.",
-            "The cache is keyed by 'id='. Default id is the target path. Set explicit ids when sharing cache across Dockerfiles.",
-            "'sharing=locked' prevents two concurrent builds from corrupting a shared cache. Use 'sharing=shared' for read-heavy caches.",
-            "Cache mounts are host-local. In CI, use a registry cache (--cache-to type=registry) to share between agents.",
-          ],
-        },
-        {
-          title: "Secret Mounts — Build Without Leaking Secrets",
-          desc: "Inject tokens, credentials, or SSH keys at build time — never in any image layer.",
-          lang: "docker",
-          filename: "Dockerfile.secrets",
-          code: `# syntax=docker/dockerfile:1
-FROM python:3.12-slim AS app
-
-WORKDIR /app
-
-# ── Method: --mount=type=secret ───────────────────────────────────────
-# The secret is ONLY available during this RUN instruction.
-# It does NOT appear in docker history, image layers, or docker inspect.
-# Secret is mounted at /run/secrets/<id> by default.
-
-COPY requirements.txt requirements-private.txt ./
-
-# Install from private PyPI that requires a token
-RUN --mount=type=secret,id=pypi_token \\
-    pip install --no-cache-dir \\
-      --extra-index-url https://$(cat /run/secrets/pypi_token)@private.pypi.company.com/simple/ \\
-      -r requirements-private.txt
-
-# Install public packages normally
-RUN --mount=type=cache,target=/root/.cache/pip \\
-    pip install -r requirements.txt
-
-COPY . .
-CMD ["python", "main.py"]`,
-          notes: [
-            "Bad: ARG TOKEN=secret → RUN pip install ... $TOKEN  ← TOKEN visible in 'docker history'.",
-            "Build command: docker buildx build --secret id=pypi_token,src=~/.pypi-token .",
-            "Or from env var: docker buildx build --secret id=pypi_token,env=PYPI_TOKEN .",
-            "In CI (GitHub Actions): echo $PYPI_TOKEN > /tmp/pypi-token && docker buildx build --secret id=pypi_token,src=/tmp/pypi-token .",
-            "You can mount multiple secrets: --mount=type=secret,id=secret1 --mount=type=secret,id=secret2.",
-          ],
-        },
-        {
-          title: "SSH Agent Forwarding — Private Git Repos",
-          desc: "Install packages from private GitHub repos without embedding SSH keys in the image.",
-          lang: "docker",
-          filename: "Dockerfile.ssh",
-          code: `# syntax=docker/dockerfile:1
-FROM python:3.12-slim AS app
-
-# Install git and openssh-client for cloning (builder only)
-RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client \\
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-COPY requirements.txt .
-
-# --mount=type=ssh forwards the host's SSH agent into the RUN step
-# The key NEVER enters the image — only the agent socket is forwarded
-RUN --mount=type=ssh \\
-    mkdir -p -m 0600 ~/.ssh && \\
-    ssh-keyscan github.com >> ~/.ssh/known_hosts && \\
-    pip install --no-cache-dir \\
-      git+ssh://git@github.com/your-org/private-lib.git@v1.2.3 \\
-      -r requirements.txt
-
-COPY . .
-CMD ["python", "main.py"]`,
-          notes: [
-            "Build command: eval $(ssh-agent) && ssh-add ~/.ssh/id_ed25519 && docker buildx build --ssh default .",
-            "Or pass a specific key: docker buildx build --ssh default=~/.ssh/deploy_key .",
-            "The SSH agent socket is forwarded into the RUN step. No key material is ever written to a layer.",
-            "ssh-keyscan populates known_hosts so git doesn't prompt for host verification.",
-            "In CI: use your CI provider's SSH key secret and run ssh-agent before the build step.",
-          ],
-        },
-      ],
-    },
-
-    // ──────────────────────────────────────────────────────────────────────
-    {
-      id: "running",
-      title: "Running Containers",
-      icon: "▶️",
-      items: [
-        {
-          title: "docker run — Complete Flags Reference",
-          desc: "Every important flag with explanations. Copy-paste as needed.",
+          title: "Build Size Comparison",
+          desc: "Compare image sizes across different build strategies to quantify the impact of multi-stage builds and base image selection.",
           lang: "bash",
-          filename: "docker-run-reference.sh",
-          code: `# ── Lifecycle ──────────────────────────────────────────────────────────
-docker run \\
-  -d \\                          # detached: run in background
-  --name myapp \\                # container name (use in scripts instead of ID)
-  --rm \\                        # auto-remove on exit (for one-off tasks)
-  --restart unless-stopped \\   # restart policy: no | always | unless-stopped | on-failure:5
+          filename: "compare-sizes.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
 
-# ── Port mapping ───────────────────────────────────────────────────────
-  -p 127.0.0.1:8000:8000 \\     # bind to localhost ONLY (not public interface!)
-  -p 8080:80 \\                  # host-port:container-port
-  --expose 9000 \\               # document a port without publishing it
+echo "Building all variants for size comparison..."
 
-# ── Environment ────────────────────────────────────────────────────────
-  -e DATABASE_URL=postgres://... \\
-  --env-file .env \\             # load from file (safer than -e for many vars)
+# ── Naive single-stage build ──────────────────────────────────────────
+docker build -t recsys:naive -f Dockerfile.bad .
 
-# ── Volumes ────────────────────────────────────────────────────────────
-  -v myvolume:/data \\           # named volume (persists between container restarts)
-  -v $(pwd)/config:/app/config:ro \\ # bind mount, read-only
-  --tmpfs /tmp:size=100m,mode=1777 \\  # in-memory filesystem for /tmp
+# ── Multi-stage with slim base ────────────────────────────────────────
+docker build -t recsys:multistage -f Dockerfile .
 
-# ── Networking ─────────────────────────────────────────────────────────
-  --network mynet \\             # attach to custom bridge network
-  --network-alias myalias \\    # additional DNS name
-  --hostname mycontainer \\     # set container hostname
-  --dns 8.8.8.8 \\              # custom DNS server
+# ── Multi-stage with distroless ───────────────────────────────────────
+docker build -t recsys:distroless -f Dockerfile.distroless .
 
-# ── Resource limits ────────────────────────────────────────────────────
-  --memory 512m \\               # hard memory limit (OOM kill if exceeded)
-  --memory-reservation 256m \\  # soft limit (Docker scheduler hint)
-  --cpus 1.5 \\                  # CPU cores (fractional OK)
-  --cpu-shares 512 \\            # relative weight (default 1024)
-  --pids-limit 200 \\            # max PIDs (prevents fork bombs)
-  --blkio-weight 500 \\          # I/O weight (100-1000, default 500)
+# ── Size comparison ───────────────────────────────────────────────────
+echo ""
+echo "=== Image Size Comparison ==="
+echo "──────────────────────────────────────────────────"
+docker images --format "table {{.Repository}}:{{.Tag}}\\t{{.Size}}" \\
+  --filter "reference=recsys:*"
 
-# ── Security ───────────────────────────────────────────────────────────
-  --user 1001:1001 \\            # run as specific UID:GID
-  --cap-drop ALL \\              # drop ALL Linux capabilities
-  --cap-add NET_BIND_SERVICE \\  # add back only what you need
-  --read-only \\                 # read-only root filesystem
-  --security-opt no-new-privileges \\  # block privilege escalation
-  --security-opt seccomp=./seccomp.json \\  # custom seccomp profile
+# Expected output:
+# recsys:naive        3.2 GB
+# recsys:multistage   ~850 MB
+# recsys:distroless   ~780 MB
 
-# ── Signals and init ───────────────────────────────────────────────────
-  --init \\                      # run tini as PID 1 (proper signal forwarding)
-  --stop-timeout 30 \\           # seconds to wait for SIGTERM before SIGKILL
+# ── Layer analysis with dive ──────────────────────────────────────────
+echo ""
+echo "=== Layer analysis (install dive: brew install dive) ==="
+echo "Run: dive recsys:naive       — see wasted space"
+echo "Run: dive recsys:multistage  — see optimised layers"
 
-# ── Debugging ──────────────────────────────────────────────────────────
-  --log-driver json-file \\
-  --log-opt max-size=50m \\
-  myimage:tag`,
+# ── Security scan comparison ──────────────────────────────────────────
+echo ""
+echo "=== Vulnerability comparison ==="
+for tag in naive multistage distroless; do
+  COUNT=\$(docker run --rm aquasec/trivy:latest image --severity CRITICAL,HIGH --quiet "recsys:\$tag" 2>/dev/null | grep -c "Total:" || echo "0")
+  echo "recsys:\$tag — \$COUNT vulnerability groups"
+done`,
           notes: [
-            "-p 127.0.0.1:8000:8000 is safer than -p 8000:8000. The latter binds to 0.0.0.0 and is publicly accessible regardless of host firewall rules.",
-            "--init is the quick fix for the PID 1 problem. For production, embed tini in your Dockerfile instead: RUN apk add tini && ENTRYPOINT [\"/sbin/tini\", \"--\"].",
-            "--pids-limit 200 prevents a buggy app or attacker from fork-bombing the host.",
-            "--read-only + --tmpfs /tmp is the recommended security baseline for any production container.",
-          ],
+            "Multi-stage builds typically reduce ML image size by 60-75% by excluding build tools (gcc, make, python-dev) and pip cache from the final image.",
+            "Distroless saves an additional 50-70 MB over slim because it removes the shell, coreutils, apt, and other OS packages entirely.",
+            "Smaller images are not just about disk space — they reduce pull time in CI/CD (critical for fast deployments), reduce cold-start time in auto-scaling, and reduce attack surface.",
+            "dive (wagoodman/dive) gives an interactive layer-by-layer breakdown showing exactly what each layer adds and identifying wasted space.",
+            "Trivy scan comparison shows that fewer OS packages = fewer CVEs. Distroless images typically have 50-80% fewer vulnerabilities than full or slim bases.",
+          ]
         },
-        {
-          title: "Graceful Shutdown — Python Signal Handling",
-          desc: "Without this, docker stop kills your app mid-request. A 10-year engineer always handles SIGTERM.",
-          lang: "python",
-          filename: "app/main.py",
-          code: `import asyncio
-import signal
-import logging
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-import uvicorn
-
-logger = logging.getLogger(__name__)
-
-
-# ── Lifespan: startup and graceful shutdown ───────────────────────────
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("Starting up: connecting to DB, loading models...")
-    # await db.connect()
-    # await model_cache.load()
-
-    yield  # ← app runs here
-
-    # Shutdown (triggered by SIGTERM → uvicorn → lifespan exit)
-    logger.info("Shutting down: closing connections...")
-    # await db.disconnect()
-    # await model_cache.cleanup()
-    logger.info("Shutdown complete")
-
-
-app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
-@app.get("/items/{item_id}")
-async def get_item(item_id: int):
-    # Simulate work
-    await asyncio.sleep(0.1)
-    return {"id": item_id}
-
-
-# ── Running uvicorn programmatically with signal handling ─────────────
-# Uvicorn handles SIGTERM by default when run as a process.
-# But if you need custom shutdown logic in a non-FastAPI context:
-
-class GracefulServer:
-    def __init__(self):
-        self._shutdown_event = asyncio.Event()
-
-    def _handle_signal(self, sig):
-        logger.info(f"Received signal {sig.name}, initiating shutdown...")
-        self._shutdown_event.set()
-
-    async def serve(self):
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, lambda s=sig: self._handle_signal(s))
-
-        config = uvicorn.Config(
-            app,
-            host="0.0.0.0",
-            port=8000,
-            loop="asyncio",
-            # Give in-flight requests time to complete
-            timeout_graceful_shutdown=30,
-            log_config=None,  # use your own logging config
-        )
-        server = uvicorn.Server(config)
-
-        serve_task = asyncio.create_task(server.serve())
-        await self._shutdown_event.wait()
-
-        logger.info("Stopping uvicorn...")
-        server.should_exit = True
-        await serve_task
-        logger.info("Server stopped")
-
-
-if __name__ == "__main__":
-    asyncio.run(GracefulServer().serve())`,
-          notes: [
-            "docker stop sends SIGTERM, waits --stop-timeout (default 10s), then sends SIGKILL. Your app must finish in-flight requests within that window.",
-            "Uvicorn's --timeout-graceful-shutdown controls how long it waits for open connections after receiving the shutdown signal.",
-            "The lifespan context manager (FastAPI 0.95+) is the modern way to manage startup/shutdown instead of @app.on_event.",
-            "If using gunicorn: set --graceful-timeout and handle SIGTERM in your worker class.",
-            "In Kubernetes: set terminationGracePeriodSeconds > uvicorn's graceful shutdown timeout to avoid SIGKILL races.",
-          ],
-        },
-      ],
+      ]
     },
 
-    // ──────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 4: Networking & Volumes
+    // ═══════════════════════════════════════════════════════════════════════════
     {
-      id: "networking",
-      title: "Networking",
-      icon: "🌐",
+      id: "networking-volumes",
+      title: "Networking & Volumes",
+      icon: "🔌",
       items: [
         {
-          title: "Custom Bridge Networks — DNS & Isolation",
-          desc: "Containers on a custom bridge resolve each other by name. The default bridge doesn't do this.",
+          title: "Custom Bridge Network for the ML Stack",
+          desc: "Create an isolated bridge network where containers discover each other by name. This is the foundation for the multi-service RecSys stack.",
           lang: "bash",
-          filename: "networking.sh",
-          code: `# ── Create a custom bridge network ────────────────────────────────────
+          filename: "setup-network.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Create a custom bridge network ────────────────────────────────────
+# Custom bridge provides:
+#   1. Automatic DNS: containers resolve each other by name
+#   2. Isolation: separate from the default bridge network
+#   3. Custom subnet: predictable IP ranges
+
 docker network create \\
   --driver bridge \\
-  --subnet 172.20.0.0/16 \\
-  --ip-range 172.20.240.0/20 \\
-  --gateway 172.20.0.1 \\
-  --opt "com.docker.network.bridge.name"="br-myapp" \\
-  myapp-net
+  --subnet 172.28.0.0/16 \\
+  --gateway 172.28.0.1 \\
+  --opt com.docker.network.bridge.name=recsys-br0 \\
+  --label project=recsys \\
+  recsys-net
 
-# ── Containers on the same custom network resolve each other by name ──
-docker run -d --name postgres --network myapp-net postgres:16
-docker run -d --name redis    --network myapp-net redis:7
-docker run -d --name api \\
-  --network myapp-net \\
-  -e DATABASE_URL=postgres://postgres:5432/mydb \\
-  -e REDIS_URL=redis://redis:6379 \\
-  myapp:latest
+# ── Launch services on the custom network ─────────────────────────────
+# Redis — feature cache and prediction cache
+docker run -d \\
+  --name recsys-redis \\
+  --network recsys-net \\
+  --network-alias cache \\
+  --memory 512m \\
+  redis:7.2-alpine \\
+  redis-server --maxmemory 400mb --maxmemory-policy allkeys-lru
 
-# 'redis' and 'postgres' resolve via Docker's embedded DNS (127.0.0.11)
-# This ONLY works on custom networks — NOT on the default bridge!
+# PostgreSQL — request logging and A/B test results
+docker run -d \\
+  --name recsys-postgres \\
+  --network recsys-net \\
+  --network-alias db \\
+  --memory 1g \\
+  -e POSTGRES_DB=recsys \\
+  -e POSTGRES_USER=recsys \\
+  -e POSTGRES_PASSWORD=changeme \\
+  -v recsys-pgdata:/var/lib/postgresql/data \\
+  postgres:16-alpine
 
-# ── Connect a container to multiple networks ──────────────────────────
-docker network connect frontend-net api    # api is now on both networks
+# Inference API — connects to Redis and PostgreSQL by name
+docker run -d \\
+  --name recsys-api \\
+  --network recsys-net \\
+  --publish 8000:8000 \\
+  --memory 2g \\
+  -e REDIS_URL=redis://cache:6379/0 \\
+  -e DATABASE_URL=postgresql://recsys:changeme@db:5432/recsys \\
+  recsys-inference:1.0.0
 
-# ── Inspect network ────────────────────────────────────────────────────
-docker network inspect myapp-net
+# ── Verify DNS resolution ────────────────────────────────────────────
+docker exec recsys-api python3 -c "
+import socket
+for host in ['cache', 'db', 'recsys-redis', 'recsys-postgres']:
+    ip = socket.gethostbyname(host)
+    print(f'{host} -> {ip}')
+"
 
-# ── Network aliases ────────────────────────────────────────────────────
-# Same container, multiple DNS names on the same network
-docker run -d --name db \\
-  --network myapp-net \\
-  --network-alias database \\
-  --network-alias pg \\
-  postgres:16
-# Now: 'db', 'database', and 'pg' all resolve to the same container IP
-
-# ── Isolate networks ───────────────────────────────────────────────────
-docker network create --internal private-net
-# --internal: no external connectivity; containers can't reach internet`,
+# ── Inspect network ──────────────────────────────────────────────────
+docker network inspect recsys-net --format '{{range .Containers}}{{.Name}}: {{.IPv4Address}}{{println}}{{end}}'`,
           notes: [
-            "The default bridge (docker0) does NOT have automatic DNS. You must use --link (deprecated) or container IPs. Always use custom networks.",
-            "Docker's embedded DNS server runs at 127.0.0.11 inside each container. It resolves container names, aliases, and service names.",
-            "A container can join multiple networks. Useful for an 'api' container that needs to reach both a 'db network' and a 'frontend network' without the two networks reaching each other.",
-            "--internal networks have no gateway — containers can talk to each other but not the internet. Use for databases.",
-          ],
+            "The default bridge network does NOT provide DNS resolution between containers — you must use --link (deprecated) or create a custom bridge network.",
+            "Network aliases (--network-alias cache) allow multiple names for the same container, making it easy to swap implementations without changing connection strings.",
+            "Custom subnets prevent IP conflicts when running multiple isolated projects — each project gets its own /16 range.",
+            "Containers on the same custom bridge can communicate on all ports without -p. The -p flag only exposes ports to the host (and external traffic).",
+            "Always set --memory limits on database containers to prevent a single service from consuming all host memory and OOM-killing other containers.",
+          ]
         },
         {
-          title: "Host Networking & Secure Port Binding",
-          desc: "When to skip NAT entirely, and how to avoid exposing ports to the public internet.",
+          title: "Named Volumes for Model Artifacts",
+          desc: "Named volumes persist model files independently of containers. This pattern allows model updates without rebuilding or restarting the inference container.",
           lang: "bash",
-          filename: "port-binding.sh",
-          code: `# ── Host network: container shares the host's network namespace ────────
-# Use case: performance-critical apps, monitoring agents (Prometheus node_exporter)
+          filename: "model-volumes.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Create named volume for model artifacts ───────────────────────────
+docker volume create \\
+  --label project=recsys \\
+  --label type=models \\
+  recsys-models
+
+# ── Load model into volume (one-time or on model update) ─────────────
+# Use an ephemeral container to copy model file into the volume
+docker run --rm \\
+  -v recsys-models:/models \\
+  -v "\$(pwd)/model-registry:/source:ro" \\
+  alpine:3.19 sh -c '
+    cp /source/recommendation_v2.pt /models/recommendation.pt
+    cp /source/feature_encoder.pkl /models/feature_encoder.pkl
+    echo "Model version: v2.1.0" > /models/VERSION
+    chown -R 1000:1000 /models
+    ls -lah /models
+  '
+
+# ── Mount model volume into inference container (read-only) ──────────
 docker run -d \\
-  --network host \\
-  --name node_exporter \\
-  prom/node-exporter:latest
-# Container IS the host network — no port mapping needed, no NAT overhead
+  --name recsys-api \\
+  --network recsys-net \\
+  --publish 8000:8000 \\
+  -v recsys-models:/app/models:ro \\
+  recsys-inference:1.0.0
 
-# ── DANGEROUS: bind to all interfaces (default) ────────────────────────
-docker run -p 5432:5432 postgres:16
-# Exposes PostgreSQL on 0.0.0.0:5432 — PUBLICLY ACCESSIBLE on a cloud VM
-# (even if you think your security group/firewall covers this!)
+# ── Update model without restart (if app supports hot-reload) ────────
+# Copy new model into the volume
+docker run --rm \\
+  -v recsys-models:/models \\
+  -v "\$(pwd)/model-registry:/source:ro" \\
+  alpine:3.19 sh -c '
+    cp /source/recommendation_v3.pt /models/recommendation.pt
+    echo "Model version: v3.0.0" > /models/VERSION
+  '
+# Signal the app to reload (if it watches for file changes or has an API)
+docker exec recsys-api kill -SIGHUP 1
 
-# ── SAFE: bind to localhost only ───────────────────────────────────────
-docker run -p 127.0.0.1:5432:5432 postgres:16
-# Now only accessible from the same host — use SSH tunnel for remote access
+# ── Volume backup ────────────────────────────────────────────────────
+docker run --rm \\
+  -v recsys-models:/source:ro \\
+  -v "\$(pwd)/backups:/backup" \\
+  alpine:3.19 tar czf /backup/models-backup-\$(date +%Y%m%d).tar.gz -C /source .
 
-# ── Binding to a specific interface ───────────────────────────────────
-docker run -p 10.0.0.5:8080:8080 myapp:latest
-# Only accessible via the internal IP 10.0.0.5
-
-# ── View what's actually bound ─────────────────────────────────────────
-docker ps --format "table {{.Names}}\\t{{.Ports}}"
-# Or:
-ss -tlnp | grep docker
-
-# ── Best practice: never publish DB/cache ports publicly ──────────────
-# Let your app container reach them via the Docker network (by name)
-# Only publish the app port, and only on localhost if behind a reverse proxy`,
+# ── Volume inspection ────────────────────────────────────────────────
+docker volume inspect recsys-models
+docker system df -v | grep recsys`,
           notes: [
-            "This is a real security footgun. docker run -p 5432:5432 on an EC2 instance bypasses Security Groups because Docker modifies iptables directly, and AWS Security Groups operate at the NIC level.",
-            "Always use 127.0.0.1:host:container binding for databases, caches, and internal services.",
-            "Host networking removes all network isolation — the container can bind to any host port. Only use for monitoring agents or extreme performance cases.",
-          ],
+            "Named volumes persist until explicitly deleted (docker volume rm) — they survive container restarts, removals, and even image updates.",
+            "Mounting models :ro (read-only) prevents the inference container from modifying model files. A separate process or pipeline handles model deployment.",
+            "Using an ephemeral container (--rm) to load models keeps the volume management separate from the running service — clean separation of concerns.",
+            "For hot model reload: the app can watch the VERSION file via inotify or expose a /reload endpoint. SIGHUP is a common convention for config reload.",
+            "Always label volumes (--label project=recsys) so you can find and manage them later — unlabeled volumes become orphans that waste disk space.",
+          ]
         },
-      ],
-    },
-
-    // ──────────────────────────────────────────────────────────────────────
-    {
-      id: "volumes",
-      title: "Volumes & Storage",
-      icon: "💾",
-      items: [
         {
-          title: "Volume Types — When to Use Each",
-          desc: "Named volumes, bind mounts, and tmpfs each have different use cases.",
+          title: "Bind Mounts for Development Hot-Reload",
+          desc: "Bind mounts map a host directory into the container in real-time. Combined with uvicorn --reload, code changes appear instantly without rebuilding.",
           lang: "bash",
-          filename: "volumes-reference.sh",
-          code: `# ── Named Volume (production data) ────────────────────────────────────
-# Docker manages the storage location (/var/lib/docker/volumes/)
-# Persists across container restarts and removal
-# Use for: database data, file uploads, any persistent state
-docker volume create pgdata
+          filename: "dev-bind-mounts.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Development mode with bind mounts ────────────────────────────────
+# Source code changes on host are instantly visible inside the container
 docker run -d \\
-  --name postgres \\
-  -v pgdata:/var/lib/postgresql/data \\
-  postgres:16
+  --name recsys-dev \\
+  --network recsys-net \\
+  --publish 8000:8000 \\
+  -v "\$(pwd)/src:/app/src" \\
+  -v "\$(pwd)/main.py:/app/main.py" \\
+  -v "\$(pwd)/tests:/app/tests" \\
+  -v recsys-models:/app/models:ro \\
+  -e ENVIRONMENT=development \\
+  -e LOG_LEVEL=debug \\
+  recsys-inference:1.0.0 \\
+  uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
 
-# Inspect a volume
-docker volume inspect pgdata
-# Shows: Mountpoint on host, Driver, Labels
+# ── Key difference from volumes ───────────────────────────────────────
+# Bind mount: host path -> container (bidirectional, host owns the data)
+# Named volume: Docker manages storage (container-first, survives removal)
+#
+# Use bind mounts for:     dev hot-reload, local config files
+# Use named volumes for:   database data, model artifacts, logs
 
-# ── Bind Mount (development) ────────────────────────────────────────────
-# Mount a host directory into the container
-# Use for: dev hot-reload, config files, log collection from host
+# ── Common pitfall: permission mismatch ───────────────────────────────
+# Host user UID may not match container user UID
+# Fix 1: Match UIDs
+docker run --rm \\
+  --user "\$(id -u):\$(id -g)" \\
+  -v "\$(pwd)/src:/app/src" \\
+  recsys-inference:1.0.0 ls -la /app/src
+
+# Fix 2: Use fixuid (add to Dockerfile)
+# RUN curl -SsL https://github.com/boxboat/fixuid/releases/... | tar -C /usr/local/bin -xzf -
+
+# ── tmpfs for temporary/scratch data ──────────────────────────────────
+# In-memory filesystem — fast, but data lost when container stops
 docker run -d \\
-  --name api-dev \\
-  -v $(pwd)/src:/app/src:ro \\       # read-only bind mount
-  -v $(pwd)/logs:/app/logs \\        # read-write for logs
-  myapp:dev
-
-# WARNING: UID mismatch — host file owner vs container user
-# Fix: use :z or :Z on SELinux hosts, or match UIDs
-
-# ── tmpfs (in-memory, ephemeral) ──────────────────────────────────────
-# Written to RAM, never touches disk, gone when container stops
-# Use for: /tmp, session files, scratch space — improves security + speed
-docker run -d \\
-  --name api \\
+  --name recsys-api-prod \\
   --read-only \\
-  --tmpfs /tmp:size=128m,mode=1777 \\
-  --tmpfs /run:size=32m \\
-  myapp:latest
-
-# ── Volume Backup ─────────────────────────────────────────────────────
-# Spin up a helper container, mount the volume, tar to stdout
-docker run --rm \\
-  -v pgdata:/source:ro \\
-  -v $(pwd)/backups:/backup \\
-  alpine \\
-  tar czf /backup/pgdata-$(date +%Y%m%d-%H%M%S).tar.gz -C /source .
-
-# ── Volume Restore ────────────────────────────────────────────────────
-docker volume create pgdata-restored
-docker run --rm \\
-  -v pgdata-restored:/target \\
-  -v $(pwd)/backups:/backup:ro \\
-  alpine \\
-  tar xzf /backup/pgdata-20240101-120000.tar.gz -C /target
-
-# ── Copy between volumes (migration) ──────────────────────────────────
-docker run --rm \\
-  -v source-vol:/from:ro \\
-  -v dest-vol:/to \\
-  alpine \\
-  cp -av /from/. /to/`,
+  --tmpfs /tmp:rw,noexec,nosuid,size=200m \\
+  --tmpfs /app/.cache:rw,noexec,size=100m \\
+  -v recsys-models:/app/models:ro \\
+  recsys-inference:1.0.0`,
           notes: [
-            "Named volumes are portable: docker volume create → docker run -v vol:/path. The actual path (/var/lib/docker/volumes/) is irrelevant.",
-            "Bind mounts are simpler for dev but problematic in production: host path must exist, UID mismatches, no portability.",
-            "tmpfs + --read-only is the recommended security baseline. Your app needs to know which paths it writes to so you can add --tmpfs for each.",
-            "For database backups in production, prefer pg_dump/mysqldump over raw volume copies — they're consistent and portable.",
-          ],
+            "Bind mounts are bidirectional — changes on the host appear in the container and vice versa. This is powerful for development but a security concern in production.",
+            "uvicorn --reload watches for file changes and restarts the server. Combined with bind mounts, this gives near-instant feedback during development.",
+            "Permission mismatches (host UID 501 vs container UID 1000) are the most common bind mount issue. Use --user or fixuid to resolve.",
+            "tmpfs mounts are in-memory and perfect for scratch files, caches, and /tmp — they disappear when the container stops, which is exactly what you want for ephemeral data.",
+            "Never use bind mounts in production — they create a dependency on the host filesystem structure. Named volumes are portable and Docker-managed.",
+          ]
         },
-      ],
+        {
+          title: "Network Debugging with netshoot",
+          desc: "When containers cannot communicate, use nicolaka/netshoot — a debug container packed with networking tools — to diagnose connectivity issues.",
+          lang: "bash",
+          filename: "debug-networking.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Attach a debug container to the same network ─────────────────────
+docker run --rm -it \\
+  --network recsys-net \\
+  nicolaka/netshoot
+
+# Inside netshoot:
+#   dig recsys-redis          # DNS resolution
+#   ping -c 3 recsys-postgres # ICMP connectivity
+#   nslookup cache            # Alias resolution
+#   curl http://recsys-api:8000/health  # HTTP test
+#   tcpdump -i eth0 port 6379 # Capture Redis traffic
+#   ss -tlnp                  # List listening ports
+
+# ── Debug from the perspective of a specific container ────────────────
+# Share network AND PID namespace with the target container
+docker run --rm -it \\
+  --network container:recsys-api \\
+  --pid container:recsys-api \\
+  nicolaka/netshoot
+
+# Inside netshoot (now in recsys-api's network namespace):
+#   ss -tlnp                  # See what ports recsys-api is listening on
+#   curl localhost:8000/health # Access as localhost (same net namespace)
+#   ps aux                    # See recsys-api's processes (shared PID ns)
+#   strace -p 1               # Trace syscalls of the main process
+
+# ── Quick DNS check without interactive shell ─────────────────────────
+docker run --rm \\
+  --network recsys-net \\
+  nicolaka/netshoot \\
+  dig +short recsys-redis recsys-postgres recsys-api
+
+# ── Port connectivity check ──────────────────────────────────────────
+docker run --rm \\
+  --network recsys-net \\
+  nicolaka/netshoot \\
+  sh -c '
+    for svc in "recsys-redis 6379" "recsys-postgres 5432" "recsys-api 8000"; do
+      set -- \$svc
+      nc -zv "\$1" "\$2" 2>&1
+    done
+  '`,
+          notes: [
+            "netshoot includes curl, dig, nslookup, ping, tcpdump, ss, nmap, strace, and dozens more tools — everything you need to debug container networking.",
+            "Using --network container:TARGET puts netshoot into the same network namespace as the target, so localhost refers to the target's loopback — essential for debugging port binding issues.",
+            "Sharing the PID namespace (--pid container:TARGET) lets you see the target's processes and even strace them — useful for debugging hanging connections.",
+            "Never install debugging tools in production images — they increase attack surface. Use ephemeral debug containers instead.",
+          ]
+        },
+      ]
     },
 
-    // ──────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 5: Docker Compose — Full ML Stack
+    // ═══════════════════════════════════════════════════════════════════════════
     {
-      id: "compose",
-      title: "Docker Compose — Production Patterns",
-      icon: "🎼",
+      id: "compose-ml",
+      title: "Docker Compose — Full ML Stack",
+      icon: "🐙",
       items: [
         {
-          title: "Production Compose Stack",
-          desc: "FastAPI + PostgreSQL + Redis with health checks, named volumes, and least-privilege config.",
+          title: "Complete compose.yml — RecSys ML Stack",
+          desc: "Production-grade Compose file for the full recommendation system: FastAPI inference API, model server, Redis feature/prediction cache, PostgreSQL for logging, and Celery worker for async processing.",
           lang: "yaml",
-          filename: "docker-compose.yml",
-          code: `name: myapp
+          filename: "compose.yml",
+          code: `# compose.yml — RecSys ML Inference Stack
+# Start:    docker compose up -d
+# Logs:     docker compose logs -f api
+# Teardown: docker compose down -v (removes volumes too)
 
 services:
-  # ── Application ──────────────────────────────────────────────────────
-  api:
-    image: myapp:\${IMAGE_TAG:-latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
-      cache_from:
-        - type=registry,ref=ghcr.io/org/myapp:buildcache
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8000:8000"     # localhost-only — put a reverse proxy in front
+
+  # ── PostgreSQL — request logging + A/B experiment tracking ─────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: recsys-postgres
     environment:
-      DATABASE_URL: "postgresql+asyncpg://app:\${POSTGRES_PASSWORD}@postgres:5432/appdb"
-      REDIS_URL: "redis://redis:6379/0"
-      LOG_LEVEL: "\${LOG_LEVEL:-info}"
-    env_file:
-      - .env                       # override above with local .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - backend
+      POSTGRES_DB: recsys
+      POSTGRES_USER: recsys
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
     volumes:
-      - uploads:/app/uploads
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recsys -d recsys"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     deploy:
       resources:
         limits:
-          cpus: "2"
-          memory: 512M
-        reservations:
-          memory: 128M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-
-  # ── PostgreSQL ────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:16-alpine
+          memory: 1G
+          cpus: "1.0"
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: appdb
-      PGDATA: /var/lib/postgresql/data/pgdata
+
+  # ── Redis — feature cache + prediction cache + rate limiting ───────
+  redis:
+    image: redis:7.2-alpine
+    container_name: recsys-redis
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+      --requirepass \\\${REDIS_PASSWORD:-changeme}
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d:ro
-    networks:
-      - backend
+      - redis-data:/data
+    networks: [recsys-net]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      test: ["CMD", "redis-cli", "-a", "\\\${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "0.5"
+    restart: unless-stopped
+
+  # ── Model Server — serves PyTorch models via gRPC ──────────────────
+  model-server:
+    build:
+      context: ./model-server
+      dockerfile: Dockerfile
+    container_name: recsys-model-server
+    volumes:
+      - models:/app/models:ro
+    environment:
+      MODEL_PATH: /app/models/recommendation.pt
+      GRPC_PORT: "50051"
+      NUM_WORKERS: "2"
+      OMP_NUM_THREADS: "4"
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import grpc; ch=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=5)"]
+      interval: 15s
+      timeout: 10s
       retries: 5
       start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: "1"
-          memory: 512M
-
-  # ── Redis ─────────────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
+          memory: 4G
+          cpus: "4.0"
     restart: unless-stopped
-    command: >
-      redis-server
-      --maxmemory 128mb
-      --maxmemory-policy allkeys-lru
-      --appendonly yes
-      --requirepass \${REDIS_PASSWORD:-}
-    volumes:
-      - redisdata:/data
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
 
-  # ── Reverse Proxy ─────────────────────────────────────────────────────
-  nginx:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - backend
-      - frontend
-
-networks:
-  backend:
-    driver: bridge
-    internal: false          # set true to block external access from this network
-  frontend:
-    driver: bridge
-
-volumes:
-  pgdata:
-  redisdata:
-  uploads:`,
-          notes: [
-            "POSTGRES_PASSWORD:? syntax causes compose to exit with an error if the variable is unset — better than silently using an empty password.",
-            "condition: service_healthy waits for the healthcheck to pass, not just the container to start. Without this, the API starts before Postgres is accepting connections.",
-            "'internal: true' on a network prevents containers on that network from reaching the internet. Use for databases.",
-            "IMAGE_TAG:-latest uses 'latest' as default. In CI, pass IMAGE_TAG=$(git rev-parse --short HEAD) for immutable deployments.",
-          ],
-        },
-        {
-          title: "Compose Override — Dev vs Production",
-          desc: "Base file defines the contract. Overrides customize per environment. Never duplicate.",
-          lang: "yaml",
-          filename: "docker-compose.override.yml",
-          code: `# docker-compose.override.yml is auto-merged on 'docker compose up'
-# For explicit: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-
-# ── Development overrides ─────────────────────────────────────────────
-services:
+  # ── FastAPI Inference API — public-facing HTTP endpoint ────────────
   api:
     build:
       context: .
-      target: builder         # use the builder stage (has dev tools)
-    volumes:
-      - .:/app                # bind-mount source for hot reload
-      - /app/.venv            # keep venv from image (anonymous volume shadows bind mount)
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: recsys-api
+    depends_on:
+      postgres:  { condition: service_healthy }
+      redis:     { condition: service_healthy }
+      model-server: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:8000:8000"
     environment:
-      LOG_LEVEL: debug
-      OTEL_SDK_DISABLED: "true"   # disable tracing in dev
-    ports:
-      - "8000:8000"           # publish directly (no nginx in dev)
+      DATABASE_URL: postgresql+asyncpg://recsys:\\\${DB_PASSWORD}@postgres:5432/recsys
+      REDIS_URL: redis://:\\\${REDIS_PASSWORD:-changeme}@redis:6379/0
+      MODEL_SERVER_URL: model-server:50051
+      ENVIRONMENT: production
+      LOG_LEVEL: info
+      WORKERS: "4"
+    env_file:
+      - .env
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
 
-  postgres:
-    ports:
-      - "127.0.0.1:5432:5432"   # expose to host for DB GUIs (TablePlus etc.)
+  # ── Celery Worker — async tasks (batch predictions, logging) ───────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: recsys-worker
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    command: ["celery", "-A", "src.tasks", "worker", "--loglevel=info", "--concurrency=4"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://recsys:\\\${DB_PASSWORD}@postgres:5432/recsys
+      CELERY_BROKER_URL: redis://:\\\${REDIS_PASSWORD:-changeme}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:\\\${REDIS_PASSWORD:-changeme}@redis:6379/2
+    env_file:
+      - .env
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD", "celery", "-A", "src.tasks", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+    restart: unless-stopped
 
-  redis:
-    ports:
-      - "127.0.0.1:6379:6379"   # expose for redis-cli on host
-
-  # ── Dev-only services (not in production) ────────────────────────────
+  # ── pgAdmin (dev/debug profile only) ───────────────────────────────
   pgadmin:
-    image: dpage/pgadmin4:latest
-    profiles: [debug]           # only start with: docker compose --profile debug up
+    image: dpage/pgadmin4:8.3
+    container_name: recsys-pgadmin
+    profiles: [debug]
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_EMAIL: admin@recsys.local
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "127.0.0.1:5050:80"
+    networks: [recsys-net]
     depends_on:
-      - postgres
+      postgres: { condition: service_healthy }
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    profiles: [debug]
-    ports:
-      - "127.0.0.1:8025:8025"   # web UI
-      - "127.0.0.1:1025:1025"   # SMTP`,
-          notes: [
-            "The trick with volumes: [/app/.venv] creates an anonymous volume that 'shadows' the bind mount at /app/.venv, preserving the venv from the image instead of exposing the host's (wrong platform) .venv.",
-            "Profiles let you run 'docker compose --profile debug up' to also start pgadmin. Without --profile, those services are ignored.",
-            "docker compose -f docker-compose.yml -f docker-compose.prod.yml up is the pattern for explicit environment switching in CI.",
-          ],
-        },
-        {
-          title: "Compose Secrets",
-          desc: "Mount secrets as files rather than environment variables — avoids leaking via env inspection.",
-          lang: "yaml",
-          filename: "docker-compose.secrets.yml",
-          code: `name: myapp-secrets-example
+volumes:
+  pgdata:
+    labels:
+      project: recsys
+      type: database
+  redis-data:
+    labels:
+      project: recsys
+      type: cache
+  models:
+    labels:
+      project: recsys
+      type: models
 
-services:
-  api:
-    image: myapp:latest
-    secrets:
-      - db_password
-      - api_key
-    environment:
-      # App reads from /run/secrets/db_password instead of an env var
-      DB_PASSWORD_FILE: /run/secrets/db_password
-      API_KEY_FILE: /run/secrets/api_key
+networks:
+  recsys-net:
+    driver: bridge
+    labels:
+      project: recsys
 
-  postgres:
-    image: postgres:16
-    secrets:
-      - db_password
-    environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password   # postgres supports _FILE suffix natively
-
-# ── File-based secrets (local / non-Swarm) ────────────────────────────
 secrets:
   db_password:
-    file: ./secrets/db_password.txt    # plain text file, not committed to git
-  api_key:
-    file: ./secrets/api_key.txt
-
-# ── External secrets (Docker Swarm) ───────────────────────────────────
-# secrets:
-#   db_password:
-#     external: true    # secret must exist in Swarm: docker secret create db_password -`,
+    file: ./secrets/db_password.txt`,
           notes: [
-            "Secrets are mounted as files at /run/secrets/<name>. Your app reads them with open('/run/secrets/db_password').read().strip().",
-            "Many official images (postgres, mysql, redis) support _FILE env var suffix natively.",
-            "docker inspect on a container does NOT show secret values — only that they are mounted. This is the key advantage over -e.",
-            "For production K8s, use Kubernetes Secrets or External Secrets Operator instead of Docker secrets.",
-          ],
+            "depends_on with condition: service_healthy ensures services start in the correct order AND wait for health checks to pass — without conditions, depends_on only waits for container start, not readiness.",
+            "Binding to 127.0.0.1:8000 instead of 0.0.0.0:8000 prevents the API from being accessible on the public network interface — use a reverse proxy (nginx/traefik) for public access.",
+            "Compose secrets (file-based) mount the secret at /run/secrets/db_password as a read-only file. POSTGRES_PASSWORD_FILE reads from this path — more secure than passing via environment variable.",
+            "The debug profile (profiles: [debug]) excludes pgAdmin from normal 'docker compose up'. Use 'docker compose --profile debug up' to include it.",
+            "deploy.resources.limits set memory and CPU caps per service — critical for ML workloads where a model server could otherwise consume all available resources.",
+          ]
         },
-      ],
+        {
+          title: ".env File Management",
+          desc: "Environment variables for the Compose stack. The .env file is used by Compose for variable interpolation; env_file directives load vars into containers.",
+          lang: "bash",
+          filename: ".env.example",
+          code: `# .env.example — Copy to .env and fill in values
+# This file is used by Docker Compose for variable interpolation
+# NEVER commit .env to git — only commit .env.example
+
+# ── Database ──────────────────────────────────────────────────────────
+DB_PASSWORD=your-strong-password-here
+POSTGRES_DB=recsys
+POSTGRES_USER=recsys
+
+# ── Redis ─────────────────────────────────────────────────────────────
+REDIS_PASSWORD=your-redis-password-here
+
+# ── API Configuration ────────────────────────────────────────────────
+ENVIRONMENT=production
+LOG_LEVEL=info
+API_KEY=your-api-key-for-clients
+
+# ── Model Configuration ──────────────────────────────────────────────
+MODEL_VERSION=v2.1.0
+MODEL_BATCH_SIZE=32
+INFERENCE_TIMEOUT_MS=100
+
+# ── Observability ────────────────────────────────────────────────────
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+SENTRY_DSN=
+
+# ── Registry (for CI/CD) ─────────────────────────────────────────────
+REGISTRY=ghcr.io/company/recsys
+IMAGE_TAG=latest`,
+          notes: [
+            "The .env file at the Compose file level is automatically loaded for variable interpolation in compose.yml (the \\$\\{VAR} syntax). This is separate from env_file which loads into containers.",
+            "Always provide a .env.example with dummy values and add .env to .gitignore. This documents required variables without leaking real secrets.",
+            "For production, use Docker secrets or external secret managers (Vault, AWS Secrets Manager) instead of .env files — env vars are visible in docker inspect.",
+            "INFERENCE_TIMEOUT_MS should be tuned based on your model's p99 latency — set it high enough to avoid false timeouts, low enough to fail fast on stuck inferences.",
+          ]
+        },
+        {
+          title: "compose.override.yml — Dev vs Prod",
+          desc: "Compose automatically merges compose.override.yml on top of compose.yml. Use it for development-specific config: bind mounts for hot-reload, debug ports, verbose logging.",
+          lang: "yaml",
+          filename: "compose.override.yml",
+          code: `# compose.override.yml — DEVELOPMENT overrides
+# Auto-merged with compose.yml when running: docker compose up
+# For production: docker compose -f compose.yml -f compose.prod.yml up
+
+services:
+
+  api:
+    # Override command for hot-reload in development
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/src"]
+    # Bind mount source code for live editing
+    volumes:
+      - ./src:/app/src
+      - ./main.py:/app/main.py
+      - ./tests:/app/tests
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+    # Remove read-only filesystem for development
+    read_only: false
+    # Expose debug port
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:5678:5678"    # debugpy remote debugging
+
+  worker:
+    command: ["celery", "-A", "src.tasks", "worker", "--loglevel=debug", "--concurrency=2"]
+    volumes:
+      - ./src:/app/src
+    environment:
+      LOG_LEVEL: debug
+
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"   # Expose for local DB tools
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"   # Expose for redis-cli`,
+          notes: [
+            "compose.override.yml is merged automatically (no -f flag needed). This is the recommended pattern for dev overrides — just run 'docker compose up'.",
+            "For production, explicitly specify files: 'docker compose -f compose.yml -f compose.prod.yml up' — this skips the override file entirely.",
+            "Bind mounts in override replace the read_only: true setting from the base file, allowing live code editing during development.",
+            "Exposing database ports (5432, 6379) is only safe in development. The override file adds these while the base compose.yml keeps them internal-only.",
+            "debugpy on port 5678 enables remote debugging from VS Code — add 'import debugpy; debugpy.listen((\"0.0.0.0\", 5678))' to main.py for dev.",
+          ]
+        },
+        {
+          title: "Compose Profiles and Operational Commands",
+          desc: "Profiles partition services into groups (default, debug, monitoring). Operational commands for day-to-day management of the ML stack.",
+          lang: "bash",
+          filename: "compose-operations.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Start the core stack (default profile) ────────────────────────────
+docker compose up -d
+# Starts: postgres, redis, model-server, api, worker
+# Skips:  pgadmin (debug profile)
+
+# ── Include debug tools ───────────────────────────────────────────────
+docker compose --profile debug up -d
+# Also starts: pgadmin
+
+# ── View logs (follow mode, specific services) ───────────────────────
+docker compose logs -f api model-server
+docker compose logs --since 5m worker
+
+# ── Scale workers for batch processing ───────────────────────────────
+docker compose up -d --scale worker=4
+# Runs 4 Celery worker containers for parallel batch predictions
+
+# ── Rolling restart (one service at a time) ───────────────────────────
+docker compose up -d --no-deps api
+# Recreates only the api service without touching its dependencies
+
+# ── Health check status ──────────────────────────────────────────────
+docker compose ps --format "table {{.Name}}\\t{{.Status}}\\t{{.Ports}}"
+
+# ── Resource usage across all services ────────────────────────────────
+docker compose stats --no-stream
+
+# ── Run one-off commands ──────────────────────────────────────────────
+# Database migration
+docker compose exec api alembic upgrade head
+
+# Run tests inside the API container
+docker compose run --rm api pytest tests/ -v
+
+# Open a shell in the model server
+docker compose exec model-server /bin/bash
+
+# ── Graceful shutdown ─────────────────────────────────────────────────
+docker compose down          # Stop and remove containers + default network
+docker compose down -v       # Also remove named volumes (DATA LOSS)
+docker compose down --rmi all  # Also remove built images`,
+          notes: [
+            "docker compose up -d --scale worker=4 is an easy way to parallelise batch processing without changing the compose.yml file.",
+            "--no-deps prevents cascading restarts: updating the API does not restart PostgreSQL or Redis, avoiding unnecessary downtime.",
+            "docker compose run --rm creates a one-off container (with deps) for ad-hoc tasks. The --rm flag ensures cleanup after the command finishes.",
+            "docker compose down -v removes named volumes — this is destructive and deletes all database data. Never use -v in production unless you intend full data reset.",
+            "docker compose stats shows live resource usage for all services in a single view — essential for identifying memory leaks or CPU spikes in the ML stack.",
+          ]
+        },
+      ]
     },
 
-    // ──────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 6: Security Hardening
+    // ═══════════════════════════════════════════════════════════════════════════
     {
       id: "security",
       title: "Security Hardening",
       icon: "🔒",
       items: [
         {
-          title: "Full Security Hardening — docker run",
-          desc: "The complete set of flags for a hardened production container.",
-          lang: "bash",
-          filename: "hardened-run.sh",
-          code: `# Hardened production docker run command
-# Explain each flag so you can justify it in a security review
+          title: "Non-Root User Setup",
+          desc: "Running containers as root is the single biggest security risk. This example shows how to properly configure a non-root user for the ML inference container.",
+          lang: "docker",
+          filename: "Dockerfile.nonroot",
+          code: `# syntax=docker/dockerfile:1.7
+# ── Non-root user setup for ML inference ─────────────────────────────
 
-docker run -d \\
-  --name api \\
-  # ── Identity ────────────────────────────────────────────────────────
-  --user 1001:1001 \\              # non-root UID:GID
+FROM python:3.12.3-slim-bookworm AS runtime
 
-  # ── Capabilities ────────────────────────────────────────────────────
-  --cap-drop ALL \\                # drop all 40+ Linux capabilities
-  --cap-add NET_BIND_SERVICE \\   # re-add only: bind ports < 1024 (if needed)
-  # Common caps you might need:
-  # NET_BIND_SERVICE: bind to ports < 1024
-  # CHOWN: change file ownership
-  # DAC_OVERRIDE: bypass file permission checks
-  # SETUID/SETGID: change process UID/GID
+# Create a dedicated user and group with explicit IDs
+# Using numeric IDs avoids issues with /etc/passwd resolution in minimal images
+RUN groupadd --gid 1000 recsys && \\
+    useradd --uid 1000 --gid recsys \\
+      --shell /usr/sbin/nologin \\
+      --no-log-init \\
+      --create-home \\
+      recsys
 
-  # ── Filesystem ──────────────────────────────────────────────────────
-  --read-only \\                   # root filesystem is read-only
-  --tmpfs /tmp:size=64m,mode=1777 \\  # writable /tmp in RAM
-  --tmpfs /run:size=16m \\         # writable /run for pid files
+# Install dependencies AS ROOT (needs write to /usr)
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+      libpq5 curl tini \\
+    && rm -rf /var/lib/apt/lists/*
 
-  # ── Privilege escalation ────────────────────────────────────────────
-  --security-opt no-new-privileges \\  # blocks setuid/setgid escalation
-  --security-opt seccomp=./seccomp-default.json \\  # syscall whitelist
+WORKDIR /app
 
-  # ── Resource isolation ──────────────────────────────────────────────
-  --memory 256m \\
-  --cpus 0.5 \\
-  --pids-limit 100 \\
+# Copy application files and set ownership in one layer
+COPY --from=builder --chown=recsys:recsys /opt/venv /opt/venv
+COPY --chown=recsys:recsys ./src /app/src
+COPY --chown=recsys:recsys ./main.py /app/
 
-  # ── Networking ──────────────────────────────────────────────────────
-  --network myapp-net \\
-  -p 127.0.0.1:8000:8000 \\
+# Create writable directories owned by the app user
+RUN mkdir -p /app/models /app/.cache && \\
+    chown -R recsys:recsys /app/models /app/.cache
 
-  myapp:latest
+# Switch to non-root user — all subsequent instructions run as recsys
+USER recsys
 
-# ── What to check after hardening ─────────────────────────────────────
-docker inspect api --format '{{json .HostConfig.SecurityOpt}}'
-docker inspect api --format '{{json .HostConfig.CapDrop}}'
-docker inspect api --format '{{.Config.User}}'`,
+# Verify (build will fail if user switch did not work)
+RUN whoami && id
+
+ENTRYPOINT ["tini", "--"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]`,
           notes: [
-            "--cap-drop ALL is the most impactful single security measure. Containers rarely need capabilities beyond the defaults, which themselves are already restricted.",
-            "--read-only prevents an attacker who gets RCE from persisting malware to disk.",
-            "--security-opt no-new-privileges prevents a process running as non-root from gaining root via setuid binaries (like sudo).",
-            "Test your hardened container: if it starts and works, great. If it fails, check 'docker logs' for 'operation not permitted' to identify missing capabilities.",
-          ],
+            "Install system packages (apt-get) before USER switch — non-root users cannot install system packages. All apt-get calls must happen while still root.",
+            "Use --no-log-init to prevent a known vulnerability where large UID values can cause a DoS via a huge /var/log/lastlog file.",
+            "/usr/sbin/nologin as the shell prevents interactive login to this user account — defense in depth against container escape.",
+            "--chown in COPY sets ownership in the same layer as the copy, avoiding a separate RUN chown that creates an extra layer with duplicate data.",
+            "Always use numeric UIDs (1000:1000) in Kubernetes deployments — runAsUser in pod security context requires numeric IDs, not names.",
+          ]
         },
         {
-          title: "Image Scanning with Trivy",
-          desc: "Find and fix CVEs before they reach production.",
+          title: "Read-Only Filesystem + tmpfs",
+          desc: "A read-only root filesystem prevents an attacker from modifying binaries, installing malware, or creating reverse shells. tmpfs provides writable space for legitimate temporary files.",
+          lang: "bash",
+          filename: "readonly-run.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Run with read-only filesystem ─────────────────────────────────────
+docker run -d \\
+  --name recsys-api \\
+  --read-only \\
+  --tmpfs /tmp:rw,noexec,nosuid,size=100m \\
+  --tmpfs /app/.cache:rw,noexec,size=50m \\
+  --tmpfs /var/run:rw,noexec,nosuid,size=10m \\
+  -v recsys-models:/app/models:ro \\
+  recsys-inference:1.0.0
+
+# ── What --read-only blocks ───────────────────────────────────────────
+# Attempting to write anywhere except tmpfs or volumes will fail:
+docker exec recsys-api sh -c 'echo "test" > /app/malicious.py' 2>&1
+# Output: sh: /app/malicious.py: Read-only file system
+
+# ── tmpfs flags explained ─────────────────────────────────────────────
+# rw       — writable (needed for /tmp)
+# noexec   — prevent executing binaries from tmpfs (blocks dropped payloads)
+# nosuid   — prevent setuid bit exploitation
+# size=100m — cap total tmpfs usage (prevent memory exhaustion)
+
+# ── Common writable paths needed by Python apps ──────────────────────
+# /tmp                    — temporary files, multiprocessing locks
+# /app/.cache             — ML model inference caches
+# /var/run                — PID files, UNIX sockets
+# /home/recsys/.local     — pip cache (if pip runs at startup)
+
+# ── Debugging read-only issues ────────────────────────────────────────
+# Find what paths the app tries to write to:
+docker run --rm \\
+  --security-opt seccomp=unconfined \\
+  recsys-inference:1.0.0 \\
+  strace -f -e trace=openat,mkdir -o /dev/stderr uvicorn main:app 2>&1 | \\
+  grep "O_WRONLY\\|O_RDWR\\|O_CREAT" | head -20
+# Add tmpfs mounts for each discovered writable path`,
+          notes: [
+            "--read-only makes the entire container root filesystem read-only, preventing binary modification, malware installation, and config tampering.",
+            "noexec on tmpfs prevents an attacker from writing and executing a payload in /tmp — a common post-exploitation technique.",
+            "Size limits on tmpfs prevent a bug or attacker from writing unlimited data to in-memory tmpfs, which would consume host RAM.",
+            "Python applications commonly need writable /tmp (for tempfile module) and sometimes /.local or .cache — use strace to discover which paths need tmpfs.",
+            "Read-only + tmpfs is not a silver bullet — an attacker with code execution can still exfiltrate data via network. It is one layer of defense in depth.",
+          ]
+        },
+        {
+          title: "Capability Dropping and Security Options",
+          desc: "Linux capabilities break root privileges into granular units. Dropping all capabilities and adding back only what is needed follows the principle of least privilege.",
+          lang: "bash",
+          filename: "capabilities.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Drop ALL capabilities, add none ──────────────────────────────────
+# ML inference APIs typically need zero capabilities
+docker run -d \\
+  --name recsys-api \\
+  --cap-drop ALL \\
+  --security-opt no-new-privileges \\
+  --security-opt apparmor=docker-default \\
+  --user 1000:1000 \\
+  --read-only \\
+  --tmpfs /tmp:rw,noexec,nosuid,size=100m \\
+  recsys-inference:1.0.0
+
+# ── Verify capabilities are dropped ──────────────────────────────────
+docker exec recsys-api cat /proc/1/status | grep Cap
+# CapEff: 0000000000000000 (no effective capabilities)
+
+# ── What if you need specific capabilities? ───────────────────────────
+# Example: binding to port 80 (requires NET_BIND_SERVICE)
+docker run -d \\
+  --cap-drop ALL \\
+  --cap-add NET_BIND_SERVICE \\
+  --user 1000:1000 \\
+  recsys-inference:1.0.0
+
+# ── Common capabilities and when you need them ───────────────────────
+# NET_BIND_SERVICE  — bind to ports < 1024 as non-root
+# SYS_PTRACE        — strace / debugging (NEVER in production)
+# NET_RAW           — ping (useful for health checks, but usually not needed)
+# CHOWN             — change file ownership (usually only needed in entrypoint scripts)
+# DAC_OVERRIDE      — bypass file permission checks (security risk — avoid)
+
+# ── Custom seccomp profile ────────────────────────────────────────────
+# Docker's default seccomp profile blocks 44 dangerous syscalls
+# For ML workloads, you can tighten further:
+docker run -d \\
+  --security-opt seccomp=./seccomp-recsys.json \\
+  --cap-drop ALL \\
+  recsys-inference:1.0.0
+
+# ── Generate a custom seccomp profile (trace what syscalls are used) ──
+# Run with seccomp logging to see which syscalls your app actually uses:
+docker run --rm \\
+  --security-opt seccomp=unconfined \\
+  recsys-inference:1.0.0 \\
+  timeout 30 strace -c -f uvicorn main:app 2>&1 | tail -30
+# Use the output to build a minimal seccomp allow-list`,
+          notes: [
+            "--cap-drop ALL removes all 41 Linux capabilities. Most applications (especially inference APIs) need zero capabilities to function.",
+            "no-new-privileges prevents any process in the container from gaining new privileges via setuid/setgid binaries — critical even with non-root USER.",
+            "Capabilities and no-new-privileges are complementary: --cap-drop ALL removes current capabilities, no-new-privileges prevents future escalation.",
+            "Custom seccomp profiles reduce the kernel attack surface by allowing only the syscalls your application actually uses — trace with strace first to build the allow-list.",
+            "Never add SYS_PTRACE or SYS_ADMIN in production — SYS_PTRACE allows container escape via process injection, SYS_ADMIN grants near-root powers.",
+          ]
+        },
+        {
+          title: "Trivy Image Scanning",
+          desc: "Scan images for OS and library vulnerabilities. Integrate Trivy into the build pipeline to catch CVEs before they reach production.",
           lang: "bash",
           filename: "trivy-scan.sh",
-          code: `# Install Trivy
-brew install aquasecurity/trivy/trivy        # macOS
-# or:
-curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          code: `#!/usr/bin/env bash
+set -euo pipefail
 
-# ── Scan a local image ────────────────────────────────────────────────
-trivy image myapp:latest
+IMAGE="recsys-inference:1.0.0"
 
-# ── Scan and show only CRITICAL and HIGH CVEs ─────────────────────────
-trivy image --severity CRITICAL,HIGH myapp:latest
+# ── Full vulnerability scan ───────────────────────────────────────────
+docker run --rm \\
+  -v /var/run/docker.sock:/var/run/docker.sock \\
+  -v trivy-cache:/root/.cache/trivy \\
+  aquasec/trivy:latest image \\
+  --severity CRITICAL,HIGH \\
+  --exit-code 1 \\
+  "\$IMAGE"
 
-# ── Exit with non-zero if CRITICAL CVEs found (for CI) ────────────────
-trivy image --exit-code 1 --severity CRITICAL myapp:latest
+# exit-code 1 makes the command fail if CRITICAL or HIGH CVEs are found
+# Use this in CI to block deployment of vulnerable images
 
-# ── Scan with SBOM output (Software Bill of Materials) ────────────────
-trivy image --format cyclonedx --output sbom.json myapp:latest
+# ── Scan with JSON output (for CI parsing) ────────────────────────────
+docker run --rm \\
+  -v /var/run/docker.sock:/var/run/docker.sock \\
+  -v trivy-cache:/root/.cache/trivy \\
+  aquasec/trivy:latest image \\
+  --format json \\
+  --output /dev/stdout \\
+  "\$IMAGE" | python3 -c "
+import json, sys
+results = json.load(sys.stdin).get('Results', [])
+for r in results:
+    for v in r.get('Vulnerabilities', []):
+        if v['Severity'] in ('CRITICAL', 'HIGH'):
+            print(f\"{v['Severity']:8s} {v['VulnerabilityID']:15s} {v['PkgName']:30s} {v.get('FixedVersion', 'no fix')}\")
+"
 
-# ── Scan a Dockerfile for misconfigurations ───────────────────────────
-trivy config --severity HIGH,CRITICAL Dockerfile
+# ── Scan only the application dependencies (not OS) ──────────────────
+docker run --rm \\
+  -v "\$(pwd):/src:ro" \\
+  aquasec/trivy:latest fs \\
+  --scanners vuln \\
+  --severity CRITICAL,HIGH \\
+  /src/requirements.lock
 
-# ── Scan a running container (live filesystem) ────────────────────────
-trivy rootfs --severity CRITICAL /proc/$(docker inspect api --format '{{.State.Pid}}')/root/
+# ── Generate SBOM (Software Bill of Materials) ───────────────────────
+docker run --rm \\
+  -v /var/run/docker.sock:/var/run/docker.sock \\
+  aquasec/trivy:latest image \\
+  --format spdx-json \\
+  --output /dev/stdout \\
+  "\$IMAGE" > sbom.spdx.json
 
-# ── Compare before vs after base image change ─────────────────────────
-trivy image --format json python:3.12 | jq '.Results[].Vulnerabilities | length'
-trivy image --format json python:3.12-slim | jq '.Results[].Vulnerabilities | length'
-trivy image --format json python:3.12-alpine | jq '.Results[].Vulnerabilities | length'
+# ── Compare before/after base image change ────────────────────────────
+echo "=== Scanning python:3.12 (full) ==="
+docker run --rm aquasec/trivy:latest image --severity CRITICAL,HIGH python:3.12 2>/dev/null | tail -3
 
-# ── GitHub Actions integration ────────────────────────────────────────
-# See CI/CD section for full workflow`,
+echo "=== Scanning python:3.12-slim ==="
+docker run --rm aquasec/trivy:latest image --severity CRITICAL,HIGH python:3.12-slim 2>/dev/null | tail -3
+
+echo "=== Scanning distroless ==="
+docker run --rm aquasec/trivy:latest image --severity CRITICAL,HIGH gcr.io/distroless/python3-debian12 2>/dev/null | tail -3`,
           notes: [
-            "python:3.12 has ~500 CVEs. python:3.12-slim has ~80. python:3.12-alpine has ~10. Choosing the right base image is the biggest CVE reducer.",
-            "Trivy also scans: filesystems, git repos, Kubernetes clusters, Terraform/Helm configs. It's a Swiss Army knife for security scanning.",
-            "Use --ignore-unfixed to skip CVEs with no available fix — reduces noise from known but unfixable issues.",
-            "Integrate trivy in CI with --exit-code 1 --severity CRITICAL so builds fail on critical vulnerabilities.",
-          ],
+            "--exit-code 1 makes Trivy return a non-zero exit code when vulnerabilities above the threshold are found — essential for CI gate enforcement.",
+            "Cache the Trivy vulnerability database (trivy-cache volume) to avoid re-downloading ~30 MB on every scan. In CI, use GitHub Actions cache or a pre-built DB image.",
+            "Scanning requirements.lock with 'trivy fs' catches Python library CVEs without building the image first — shift security left in the pipeline.",
+            "SBOM (Software Bill of Materials) in SPDX format provides a machine-readable inventory of all packages — increasingly required for supply-chain compliance.",
+            "Switching from python:3.12 to python:3.12-slim typically eliminates 50-100 CVEs. Switching to distroless eliminates even more.",
+          ]
         },
         {
-          title: "Image Signing with cosign (Sigstore)",
-          desc: "Sign images in CI, verify before deployment. Protects against supply chain attacks.",
-          lang: "bash",
-          filename: "cosign-signing.sh",
-          code: `# Install cosign
-brew install sigstore/tap/cosign   # macOS
-# or: go install github.com/sigstore/cosign/v2/cmd/cosign@latest
+          title: "BuildKit Secrets for Private PyPI",
+          desc: "When your ML model depends on private Python packages, use BuildKit --mount=type=secret to inject the PyPI token during build without leaking it into any image layer.",
+          lang: "docker",
+          filename: "Dockerfile.private-pypi",
+          code: `# syntax=docker/dockerfile:1.7
+# ──────────────────────────────────────────────────────────────────────
+# Installing from a private PyPI registry securely
+# The token NEVER appears in any layer or docker history
+# ──────────────────────────────────────────────────────────────────────
 
-# ── Keyless signing (GitHub Actions / OIDC) ────────────────────────────
-# Cosign can sign without a long-lived key using OIDC identity
-# In GitHub Actions:
-cosign sign --yes ghcr.io/org/myapp:sha-abc1234
+FROM python:3.12.3-slim-bookworm AS builder
 
-# Verify (anyone can verify against the public Rekor transparency log)
-cosign verify \\
-  --certificate-identity "https://github.com/org/repo/.github/workflows/ci.yml@refs/heads/main" \\
-  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \\
-  ghcr.io/org/myapp:sha-abc1234
+WORKDIR /build
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH"
 
-# ── Key-based signing (if you prefer explicit keys) ───────────────────
-cosign generate-key-pair          # creates cosign.key (private) + cosign.pub (public)
-cosign sign --key cosign.key ghcr.io/org/myapp:latest
-cosign verify --key cosign.pub ghcr.io/org/myapp:latest
+# Mount the PyPI token as a secret during pip install
+# The secret is available only during this RUN instruction
+# It does NOT exist in the resulting layer
+RUN --mount=type=secret,id=pypi_token \\
+    --mount=type=cache,target=/root/.cache/pip \\
+    pip install \\
+      --extra-index-url "https://__token__:\$(cat /run/secrets/pypi_token)@pypi.company.com/simple/" \\
+      -r requirements.txt
 
-# ── Attach SBOM as attestation ────────────────────────────────────────
-trivy image --format cyclonedx --output sbom.json myapp:latest
-cosign attest --yes --predicate sbom.json --type cyclonedx ghcr.io/org/myapp:sha-abc1234
+# ── Verify the secret is not in any layer ─────────────────────────────
+# After building, check:
+#   docker history recsys-inference:1.0.0
+#   docker inspect recsys-inference:1.0.0
+# Neither will show the token value
 
-# ── Verify attestation ────────────────────────────────────────────────
-cosign verify-attestation \\
-  --type cyclonedx \\
-  --certificate-identity "..." \\
-  --certificate-oidc-issuer "..." \\
-  ghcr.io/org/myapp:sha-abc1234 | jq .
+# ── Build command ─────────────────────────────────────────────────────
+# docker build --secret id=pypi_token,src=./secrets/pypi-token.txt -t recsys-inference:1.0.0 .
 
-# ── Enforce signing in Kubernetes (with Policy Controller) ────────────
-# kubectl apply -f https://github.com/sigstore/policy-controller/releases/latest/download/policy-controller.yaml
-# Then create a ClusterImagePolicy requiring signed images`,
+# ── WRONG WAY (DO NOT DO THIS) ───────────────────────────────────────
+# ARG PYPI_TOKEN
+# RUN pip install --extra-index-url "https://\$PYPI_TOKEN@pypi.company.com/..." ...
+# The token is visible in:
+#   docker history --no-trunc
+#   The layer's filesystem (docker save | tar xf)
+#   docker inspect (in Env or Cmd arrays)
+
+FROM python:3.12.3-slim-bookworm AS runtime
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:\$PATH"
+COPY --chown=1000:1000 ./src /app/src
+USER 1000:1000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]`,
           notes: [
-            "Keyless signing (OIDC) is the recommended modern approach — no long-lived keys to rotate or leak.",
-            "The Rekor transparency log is public and immutable — every signing event is recorded, enabling audit.",
-            "In Kubernetes: pair cosign with the Sigstore Policy Controller to reject unsigned images at admission.",
-            "Cosign signatures are stored as OCI artifacts in the same registry as the image — no separate infrastructure.",
-          ],
+            "BuildKit secrets are mounted only during the RUN instruction and never written to any image layer. Even docker history --no-trunc will not reveal the value.",
+            "The ARG approach is insecure because ARG values are recorded in the image metadata and visible via docker history and docker inspect.",
+            "In CI, pass the secret from a GitHub Actions secret or Vault: docker build --secret id=pypi_token,env=PYPI_TOKEN (reads from environment variable).",
+            "For SSH-based private repos (git+ssh://), use --mount=type=ssh to forward your SSH agent instead of copying keys into the build.",
+            "Always use a separate builder stage so that even if the secret were somehow captured, it would not exist in the final runtime image.",
+          ]
         },
-      ],
+      ]
     },
 
-    // ──────────────────────────────────────────────────────────────────────
-    {
-      id: "multiarch",
-      title: "Multi-Architecture Builds",
-      icon: "🏛️",
-      items: [
-        {
-          title: "Build & Push Multi-Arch Images with buildx",
-          desc: "Build once, run on amd64 (cloud) and arm64 (Apple Silicon / AWS Graviton) from the same CI.",
-          lang: "bash",
-          filename: "multiarch-build.sh",
-          code: `# ── Setup buildx with QEMU emulation ─────────────────────────────────
-# Install QEMU for cross-architecture emulation
-docker run --rm --privileged tonistiigi/binfmt --install all
-
-# Create a new buildx builder (the 'default' builder doesn't support multi-arch push)
-docker buildx create --name multiarch \\
-  --driver docker-container \\
-  --driver-opt network=host \\
-  --use
-
-docker buildx inspect multiarch --bootstrap
-# Should show: Platforms: linux/amd64, linux/arm64, linux/arm/v7, etc.
-
-# ── Build for multiple platforms and push ─────────────────────────────
-docker buildx build \\
-  --platform linux/amd64,linux/arm64 \\
-  --tag ghcr.io/org/myapp:latest \\
-  --tag ghcr.io/org/myapp:1.2.3 \\
-  --cache-from type=registry,ref=ghcr.io/org/myapp:buildcache \\
-  --cache-to   type=registry,ref=ghcr.io/org/myapp:buildcache,mode=max \\
-  --push \\                       # --push required for multi-arch; --load only loads single arch
-  .
-
-# ── Inspect the resulting manifest list ──────────────────────────────
-docker buildx imagetools inspect ghcr.io/org/myapp:latest
-# Output shows two manifests: one for amd64, one for arm64
-# When you pull on any platform, Docker picks the right one automatically
-
-# ── Build locally without push (single arch only) ─────────────────────
-docker buildx build --platform linux/arm64 --load --tag myapp:arm64-test .
-docker run --rm myapp:arm64-test uname -m   # → aarch64
-
-# ── TARGETARCH in Dockerfile for conditional steps ────────────────────
-# FROM python:3.12-slim
-# ARG TARGETARCH  (auto-set by buildx)
-# RUN if [ "$TARGETARCH" = "arm64" ]; then echo "arm64 specific step"; fi`,
-          notes: [
-            "QEMU emulation makes arm64 builds ~3-5x slower than native arm64 hardware. For CI, consider using GitHub's arm64 runners (available on paid plans) or AWS Graviton runners.",
-            "mode=max in cache-to exports all layers, not just the final stage. This is slower to push but much better cache hit rate for future builds.",
-            "--push is required for multi-arch builds because multi-arch manifests can't be loaded into the local docker daemon.",
-            "AWS Graviton (arm64) instances are 20-40% cheaper than amd64 equivalents. Multi-arch enables you to run on them.",
-          ],
-        },
-      ],
-    },
-
-    // ──────────────────────────────────────────────────────────────────────
-    {
-      id: "registry",
-      title: "Registry Operations",
-      icon: "📦",
-      items: [
-        {
-          title: "ECR (AWS) & GAR (GCP) Authentication",
-          desc: "Cloud registries use temporary tokens, not passwords. Automate the login.",
-          lang: "bash",
-          filename: "registry-auth.sh",
-          code: `# ══ AWS ECR ═══════════════════════════════════════════════════════════
-# ECR login tokens expire after 12 hours
-# The aws CLI pipes the password to docker login
-
-AWS_ACCOUNT=123456789012
-AWS_REGION=us-east-1
-ECR_REGISTRY="\${AWS_ACCOUNT}.dkr.ecr.\${AWS_REGION}.amazonaws.com"
-
-# Login (valid for 12h)
-aws ecr get-login-password --region $AWS_REGION \\
-  | docker login --username AWS --password-stdin $ECR_REGISTRY
-
-# Create a repository (one-time)
-aws ecr create-repository \\
-  --repository-name myapp \\
-  --image-scanning-configuration scanOnPush=true \\
-  --encryption-configuration encryptionType=AES256
-
-# Build, tag, push
-docker build --tag $ECR_REGISTRY/myapp:latest .
-docker push $ECR_REGISTRY/myapp:latest
-
-# Pull
-docker pull $ECR_REGISTRY/myapp:latest
-
-# ── ECR Credential Helper (auto-refreshes tokens) ─────────────────────
-# Install: brew install docker-credential-helper-ecr
-# ~/.docker/config.json:
-# { "credHelpers": { "123456789012.dkr.ecr.us-east-1.amazonaws.com": "ecr-login" } }
-# Now 'docker push' auto-refreshes the token without manual aws ecr get-login-password
-
-# ══ GCP Artifact Registry ═════════════════════════════════════════════
-GCP_PROJECT=my-project
-GCP_REGION=us-central1
-GAR_REGISTRY="\${GCP_REGION}-docker.pkg.dev/\${GCP_PROJECT}/myrepo"
-
-# Login
-gcloud auth configure-docker \${GCP_REGION}-docker.pkg.dev
-
-# Build, tag, push
-docker build --tag $GAR_REGISTRY/myapp:latest .
-docker push $GAR_REGISTRY/myapp:latest
-
-# ── Workload Identity for GKE (no static credentials) ─────────────────
-# Configure Workload Identity on the GKE node pool
-# Grant 'Artifact Registry Reader' to the Kubernetes service account
-# Nodes can pull from GAR without any credentials in pods`,
-          notes: [
-            "In CI (GitHub Actions), use the official AWS action: aws-actions/amazon-ecr-login. For GCP: google-github-actions/auth.",
-            "ECR lifecycle policies prevent disk exhaustion: expire untagged images after 1 day, keep only the last N tagged images.",
-            "Credential helpers are superior to manual docker login — they auto-refresh expiring tokens and store credentials securely in the OS keychain.",
-            "For GKE, Workload Identity is the gold standard — no static service account keys anywhere.",
-          ],
-        },
-      ],
-    },
-
-    // ──────────────────────────────────────────────────────────────────────
-    {
-      id: "debugging",
-      title: "Debugging & Troubleshooting",
-      icon: "🔍",
-      items: [
-        {
-          title: "Essential Debug Commands Reference",
-          desc: "Everything you need to diagnose any container issue from the CLI.",
-          lang: "bash",
-          filename: "debug-reference.sh",
-          code: `# ── Logs ──────────────────────────────────────────────────────────────
-docker logs api --follow                    # stream live
-docker logs api --tail 100                  # last 100 lines
-docker logs api --since 30m                 # last 30 minutes
-docker logs api --since 2024-01-01T10:00:00 # since timestamp
-docker logs api 2>&1 | grep ERROR           # filter (stderr + stdout)
-
-# ── Exec into running container ───────────────────────────────────────
-docker exec -it api /bin/bash              # interactive shell
-docker exec api env                        # dump environment variables
-docker exec api cat /proc/1/cmdline        # what is PID 1?
-docker exec api curl -s http://localhost:8000/health  # test from inside
-
-# ── Inspect ───────────────────────────────────────────────────────────
-docker inspect api                                        # full JSON
-docker inspect api --format '{{.State.Status}}'          # running/stopped/dead
-docker inspect api --format '{{.State.ExitCode}}'        # why did it die?
-docker inspect api --format '{{.Config.User}}'           # which user?
-docker inspect api --format '{{json .HostConfig.Binds}}' # volume mounts
-docker inspect api --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' # IP
-
-# ── Resource usage ────────────────────────────────────────────────────
-docker stats                              # live stats for ALL containers
-docker stats api --no-stream              # snapshot (one line)
-docker top api                            # process list inside container
-
-# ── System ────────────────────────────────────────────────────────────
-docker system df                          # disk usage (images/containers/volumes/build cache)
-docker system df -v                       # verbose (per-image breakdown)
-docker system events --since 1h           # audit trail: start/stop/die/pull/etc.
-docker system info                        # daemon config, storage driver, cgroup version
-
-# ── Cleanup (be careful in production!) ──────────────────────────────
-docker container prune                    # remove stopped containers
-docker image prune                        # remove dangling images
-docker image prune -a --filter "until=24h" # remove images not used in 24h
-docker volume prune                       # remove unused volumes ← IRREVERSIBLE
-docker system prune -a                    # EVERYTHING unused ← use with extreme caution`,
-          notes: [
-            "docker inspect --format with Go template syntax is extremely powerful. Learn the format string to extract exactly what you need without piping through jq.",
-            "docker system events is your audit log. If something happened to a container at 3am, this is how you find it.",
-            "docker volume prune is IRREVERSIBLE and will delete data. Always confirm before running in production.",
-            "'docker stats --no-stream' is great for a snapshot in scripts; '--follow' for real-time monitoring.",
-          ],
-        },
-        {
-          title: "Debug a Crashed Container (Can't exec in)",
-          desc: "Container exits immediately — the standard docker exec approach won't work. Here's how to debug.",
-          lang: "bash",
-          filename: "debug-crashed.sh",
-          code: `# ── Scenario: container keeps crashing (CrashLoopBackOff equivalent) ──
-
-# Step 1: Get the exit code and OOM status
-docker inspect api --format 'Exit: {{.State.ExitCode}}, OOMKilled: {{.State.OOMKilled}}'
-# Exit 137 = OOM killed (exit code 128 + signal 9)
-# Exit 1 = application error
-# Exit 126 = permission denied
-# Exit 127 = command not found
-
-# Step 2: Read logs from the last (failed) run
-docker logs api --tail 50
-
-# Step 3: Get logs even after container is removed (if using json-file driver)
-# Logs stored at: /var/lib/docker/containers/<id>/<id>-json.log
-docker inspect api --format '{{.Id}}' | xargs -I{} cat /var/lib/docker/containers/{}/{}-json.log | tail -50
-
-# Step 4: Override entrypoint to get a shell (bypass the crashing process)
-docker run -it --rm \\
-  --entrypoint /bin/sh \\
-  --env-file .env \\
-  myapp:latest
-# Now you're inside with the same env/mounts, but the app isn't running
-# Manually run the start command to see the error:
-# $ uvicorn app.main:app
-# → ImportError: no module named 'xxx'  ← found the bug!
-
-# Step 5: Check file permissions
-docker run -it --rm --entrypoint /bin/sh myapp:latest -c "ls -la /app && id"
-
-# Step 6: Check if it's a config issue
-docker run -it --rm \\
-  --entrypoint /bin/sh \\
-  -e DATABASE_URL=postgres://test:test@localhost/test \\
-  myapp:latest \\
-  -c "python -c 'from app.config import settings; print(settings)'"
-
-# Step 7: Ephemeral sidecar for network debugging
-# Share the crashed container's network namespace
-CONTAINER_ID=$(docker ps -aqf name=api)
-docker run -it --rm \\
-  --network container:$CONTAINER_ID \\
-  --pid container:$CONTAINER_ID \\
-  nicolaka/netshoot \\
-  /bin/bash
-# Now inside netshoot, you have: ss, curl, ping, tcpdump, strace all pointing at api's namespaces`,
-          notes: [
-            "Exit code 137 = OOM kill. Increase memory limit or find the memory leak. Exit code 1 = your app crashed. Exit code 127 = binary not found.",
-            "The --entrypoint override trick is the #1 debug technique for crashing containers. You get the exact same environment but bypass the failing start command.",
-            "nicolaka/netshoot is a Swiss Army knife image (200+ network tools) for debugging network issues in containers.",
-            "--pid container:X lets you see (and strace) the processes of another container from your debug sidecar.",
-          ],
-        },
-        {
-          title: "nsenter — Deep Namespace Debugging",
-          desc: "Attach to a container's namespaces from the host. Bypasses container runtime entirely.",
-          lang: "bash",
-          filename: "nsenter-debug.sh",
-          code: `# nsenter: enter Linux namespaces of a running process
-# Useful when: distroless/scratch image (no shell), docker exec hangs, or you need host-level tools
-
-# Step 1: Get the host PID of the container's PID 1
-CONTAINER_PID=$(docker inspect api --format '{{.State.Pid}}')
-echo "Container PID on host: $CONTAINER_PID"
-
-# Step 2: Enter ALL namespaces (behave exactly like docker exec)
-sudo nsenter \\
-  --target $CONTAINER_PID \\
-  --mount \\           # filesystem namespace
-  --uts \\             # hostname namespace
-  --ipc \\             # IPC namespace
-  --net \\             # network namespace
-  --pid \\             # PID namespace
-  -- /bin/sh           # command to run
-
-# Step 3: Enter only the network namespace (run host tools with container network)
-# Useful: run tcpdump on the container's interface from the host
-sudo nsenter --target $CONTAINER_PID --net -- ss -tlnp
-sudo nsenter --target $CONTAINER_PID --net -- curl http://localhost:8000/health
-sudo nsenter --target $CONTAINER_PID --net -- tcpdump -i eth0 -w /tmp/cap.pcap
-
-# Step 4: Enter network namespace of a scratch/distroless container
-# The container has no shell — but nsenter uses host tools
-sudo nsenter --target $CONTAINER_PID --net ip addr
-sudo nsenter --target $CONTAINER_PID --net netstat -tlnp
-
-# Step 5: Read the container's /proc to understand its state without entering
-# Filesystem (what the container sees at /)
-ls /proc/$CONTAINER_PID/root/
-
-# Environment variables
-cat /proc/$CONTAINER_PID/environ | tr '\\0' '\\n'
-
-# Open file descriptors
-ls -la /proc/$CONTAINER_PID/fd/
-
-# Memory maps
-cat /proc/$CONTAINER_PID/maps | grep heap`,
-          notes: [
-            "nsenter requires root (sudo) on the host because it's entering privileged kernel namespaces.",
-            "The killer use case: distroless or scratch images have no shell. docker exec fails. nsenter lets you use host tools to inspect the container.",
-            "/proc/<PID>/environ gives you the exact environment the container sees, including any runtime-injected values.",
-            "/proc/<PID>/root is the container's root filesystem as seen from the host. You can read files, copy them out, etc.",
-          ],
-        },
-      ],
-    },
-
-    // ──────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 7: CI/CD Pipeline
+    // ═══════════════════════════════════════════════════════════════════════════
     {
       id: "cicd",
-      title: "CI/CD Integration",
-      icon: "🔄",
+      title: "CI/CD Pipeline",
+      icon: "🚀",
       items: [
         {
-          title: "GitHub Actions — Full Production Build Pipeline",
-          desc: "Build, scan, sign, and push with BuildKit layer caching. The real-world CI pattern.",
+          title: "GitHub Actions: Build, Scan, Push Workflow",
+          desc: "Complete CI pipeline for the RecSys inference image: lint Dockerfile, run tests, build with BuildKit + cache, scan with Trivy, push to GHCR with semantic tags.",
           lang: "yaml",
-          filename: ".github/workflows/docker.yml",
-          code: `name: Build & Push
+          filename: ".github/workflows/docker-build.yml",
+          code: `# .github/workflows/docker-build.yml
+name: Build & Push RecSys Image
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "requirements.lock"
+      - ".github/workflows/docker-build.yml"
+
+permissions:
+  contents: read
+  packages: write        # Push to GHCR
+  security-events: write # Upload Trivy SARIF
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: \${{ github.repository }}
+  IMAGE_NAME: \\\${{ github.repository }}/recsys-inference
 
 jobs:
-  build:
+  # ── Step 1: Lint Dockerfile ───────────────────────────────────────
+  lint:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write           # push to GHCR
-      id-token: write           # keyless cosign signing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
 
+  # ── Step 2: Run tests ─────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.lock
+      - run: pytest tests/ -v --tb=short
+
+  # ── Step 3: Build, scan, and push ─────────────────────────────────
+  build:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # ── Setup ──────────────────────────────────────────────────────
-      - name: Set up QEMU (for multi-arch)
-        uses: docker/setup-qemu-action@v3
+      # Set up Docker Buildx (BuildKit)
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      # Login to GHCR (skip on PRs from forks)
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
         with:
-          registry: \${{ env.REGISTRY }}
-          username: \${{ github.actor }}
-          password: \${{ secrets.GITHUB_TOKEN }}
+          registry: \\\${{ env.REGISTRY }}
+          username: \\\${{ github.actor }}
+          password: \\\${{ secrets.GITHUB_TOKEN }}
 
-      # ── Generate image metadata (tags + labels) ─────────────────────
-      - name: Generate image metadata
+      # Generate tags and labels from git context
+      - uses: docker/metadata-action@v5
         id: meta
-        uses: docker/metadata-action@v5
         with:
-          images: \${{ env.REGISTRY }}/\${{ env.IMAGE_NAME }}
+          images: \\\${{ env.REGISTRY }}/\\\${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,prefix=sha-
             type=ref,event=branch
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=\${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=,format=short
+          labels: |
+            org.opencontainers.image.title=recsys-inference
+            org.opencontainers.image.description=ML Recommendation Inference API
 
-      # ── Build & push ────────────────────────────────────────────────
-      - name: Build and push
-        id: build-push
-        uses: docker/build-push-action@v6
+      # Build and push (with BuildKit GHA cache)
+      - uses: docker/build-push-action@v5
+        id: build
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: \${{ github.event_name != 'pull_request' }}
-          tags: \${{ steps.meta.outputs.tags }}
-          labels: \${{ steps.meta.outputs.labels }}
-          cache-from: type=gha              # GitHub Actions cache
+          push: \\\${{ github.event_name != 'pull_request' }}
+          tags: \\\${{ steps.meta.outputs.tags }}
+          labels: \\\${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          provenance: true
+          sbom: true
 
-      # ── Vulnerability scan ──────────────────────────────────────────
-      - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+      # Scan with Trivy
+      - uses: aquasecurity/trivy-action@master
         with:
-          image-ref: \${{ env.REGISTRY }}/\${{ env.IMAGE_NAME }}:\${{ steps.meta.outputs.version }}
+          image-ref: \\\${{ env.REGISTRY }}/\\\${{ env.IMAGE_NAME }}:\\\${{ steps.meta.outputs.version }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-          exit-code: 1            # fail build on CRITICAL
+          exit-code: "1"
 
-      - name: Upload Trivy SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+      # Upload scan results to GitHub Security tab
+      - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
 
-      # ── Sign with cosign (keyless OIDC) ─────────────────────────────
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3
-
-      - name: Sign the image
-        if: github.event_name != 'pull_request'
-        run: |
-          cosign sign --yes \\
-            \${{ env.REGISTRY }}/\${{ env.IMAGE_NAME }}@\${{ steps.build-push.outputs.digest }}`,
+      # Print image digest for verification
+      - run: echo "Image digest - \\\${{ steps.build.outputs.digest }}"`,
           notes: [
-            "type=gha cache is the easiest CI cache — uses GitHub's own cache API, no external registry needed for caching.",
-            "mode=max exports all intermediate layer caches, not just the final stage. Slower to push but dramatically better cache hits.",
-            "The cosign step signs the specific digest (not tag) — tags are mutable, digests are immutable.",
-            "SARIF output uploads vulnerabilities to GitHub Security tab for tracking without failing PRs (use if: always()).",
-            "Separate 'push: ${{ github.event_name != pull_request }}' prevents pushing unreviewed PR images.",
-          ],
+            "The paths filter on pull_request prevents CI from running when unrelated files change — saves compute and reduces feedback time.",
+            "docker/metadata-action generates tags automatically: v1.2.3 creates tags for 1.2.3, 1.2, and the git SHA — no manual tag management needed.",
+            "GHA cache (type=gha) uses the GitHub Actions cache API — no registry needed for caching. mode=max exports all layers, not just the final stage.",
+            "provenance: true and sbom: true attach SLSA provenance attestation and Software Bill of Materials to the image — required for supply-chain security compliance.",
+            "Trivy results in SARIF format are uploaded to GitHub's Security tab, providing a dashboard of vulnerabilities across all builds.",
+          ]
         },
         {
-          title: "Kaniko — Rootless Builds Inside Kubernetes",
-          desc: "Build Docker images inside a K8s pod without privileged access or a Docker daemon.",
+          title: "BuildKit Cache Strategies for CI",
+          desc: "Different cache strategies for different CI environments. The right choice depends on whether you have registry access, GitHub Actions, or a self-hosted runner.",
           lang: "yaml",
-          filename: "kaniko-job.yml",
-          code: `# Kaniko: Google's tool for building container images inside K8s
-# No Docker daemon, no privileged pods, no DinD security risks
+          filename: "cache-strategies.yml",
+          code: `# ── Strategy 1: GitHub Actions Cache (GHA) ────────────────────────────
+# Best for: GitHub Actions workflows
+# Pros: No registry needed, free with Actions minutes
+# Cons: 10 GB cache limit per repo, not shared across repos
+- uses: docker/build-push-action@v5
+  with:
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
 
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: kaniko-build
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      initContainers:
-        # Clone the source repo (or use a git init container)
-        - name: clone-repo
-          image: alpine/git:latest
-          command:
-            - git
-            - clone
-            - --depth=1
-            - https://github.com/org/myapp.git
-            - /workspace
-          volumeMounts:
-            - name: workspace
-              mountPath: /workspace
+# ── Strategy 2: Registry Cache ────────────────────────────────────────
+# Best for: Self-hosted CI, GitLab CI, or when GHA cache is full
+# Pros: Unlimited size, shared across all CI runners
+# Cons: Registry egress costs, slightly slower than local cache
+- uses: docker/build-push-action@v5
+  with:
+    cache-from: type=registry,ref=ghcr.io/company/recsys-inference:cache
+    cache-to: type=registry,ref=ghcr.io/company/recsys-inference:cache,mode=max
 
-      containers:
-        - name: kaniko
-          image: gcr.io/kaniko-project/executor:latest
-          args:
-            - --context=/workspace
-            - --dockerfile=/workspace/Dockerfile
-            - --destination=ghcr.io/org/myapp:latest
-            - --destination=ghcr.io/org/myapp:$(git rev-parse --short HEAD)
-            - --cache=true
-            - --cache-repo=ghcr.io/org/myapp/cache
-            - --compressed-caching=false   # faster for large images
-            - --snapshot-mode=redo         # more reliable than default
-          volumeMounts:
-            - name: workspace
-              mountPath: /workspace
-            - name: docker-config
-              mountPath: /kaniko/.docker/
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "500m"
-            limits:
-              memory: "2Gi"
-              cpu: "2"
+# ── Strategy 3: Local Cache (self-hosted runners) ────────────────────
+# Best for: Persistent self-hosted runners with fast local storage
+# Pros: Fastest, no network transfer
+# Cons: Only works on the same runner, disk management needed
+- uses: docker/build-push-action@v5
+  with:
+    cache-from: type=local,src=/tmp/.buildx-cache
+    cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+# Move cache to avoid unbounded growth:
+- run: |
+    rm -rf /tmp/.buildx-cache
+    mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-      volumes:
-        - name: workspace
-          emptyDir: {}
-        - name: docker-config
-          secret:
-            secretName: registry-credentials
-            items:
-              - key: .dockerconfigjson
-                path: config.json
+# ── Strategy 4: Inline Cache (simplest) ──────────────────────────────
+# Best for: Simple setups, small images
+# Pros: No extra infrastructure, cache lives in the image itself
+# Cons: Only caches final stage layers, not intermediate stages
+- uses: docker/build-push-action@v5
+  with:
+    cache-from: type=registry,ref=ghcr.io/company/recsys-inference:latest
+    build-args: BUILDKIT_INLINE_CACHE=1
 
----
-# Registry credentials secret
-# kubectl create secret docker-registry registry-credentials \\
-#   --docker-server=ghcr.io \\
-#   --docker-username=org \\
-#   --docker-password=$GITHUB_TOKEN`,
+# ── ML-Specific: Cache pip downloads + model weights ─────────────────
+# In the Dockerfile, use cache mounts for maximum benefit:
+#   RUN --mount=type=cache,target=/root/.cache/pip pip install ...
+#   RUN --mount=type=cache,target=/root/.cache/models python download_model.py
+# These cache mounts are preserved by BuildKit's cache export`,
           notes: [
-            "Kaniko runs as a regular (non-privileged) pod. No --privileged, no Docker socket mount — much safer than DinD.",
-            "DinD requires --privileged which gives the build pod near-root access to the node. Avoid in shared clusters.",
-            "Kaniko caches layers in a registry (--cache-repo). First build is slow; subsequent builds reuse cached layers.",
-            "For GitHub Actions in K8s, prefer BuildKit with Docker's actions over Kaniko — easier cache management. Use Kaniko for self-hosted K8s CI where Actions isn't available.",
-          ],
+            "mode=max exports all layers from all stages (including intermediate build stages). Without it, only the final stage layers are cached — much less effective for multi-stage builds.",
+            "GHA cache has a 10 GB per-repo limit. ML images with PyTorch can easily exceed this. If you hit the limit, switch to registry cache or prune stale cache entries.",
+            "Registry cache with mode=max is the most robust strategy for teams — it works across all CI runners and scales with your registry.",
+            "Local cache on self-hosted runners requires the move trick (cache-new -> cache) to prevent unbounded growth. Without it, each build appends to the cache directory.",
+            "Inline cache (BUILDKIT_INLINE_CACHE=1) embeds cache metadata in the image itself. Simple but only caches final stage — use mode=max for multi-stage builds.",
+          ]
         },
-      ],
+        {
+          title: "Multi-Architecture Build in CI",
+          desc: "Build for both amd64 (Intel/AMD servers) and arm64 (AWS Graviton, Apple Silicon) in a single CI pipeline. Graviton instances are 20% cheaper, so arm64 support saves money.",
+          lang: "yaml",
+          filename: ".github/workflows/multi-arch.yml",
+          code: `# Multi-architecture build job
+# Produces a manifest list: one tag -> amd64 + arm64 images
+multi-arch-build:
+  needs: [lint, test]
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+
+    # QEMU emulator for arm64 on amd64 runners
+    - uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
+    - uses: docker/setup-buildx-action@v3
+
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: \\\${{ github.actor }}
+        password: \\\${{ secrets.GITHUB_TOKEN }}
+
+    - uses: docker/metadata-action@v5
+      id: meta
+      with:
+        images: ghcr.io/\\\${{ github.repository }}/recsys-inference
+        tags: |
+          type=semver,pattern={{version}}
+          type=sha,prefix=,format=short
+
+    # Build for both architectures
+    - uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: \\\${{ steps.meta.outputs.tags }}
+        labels: \\\${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # Verify manifest list
+    - run: |
+        docker buildx imagetools inspect ghcr.io/\\\${{ github.repository }}/recsys-inference:\\\${{ steps.meta.outputs.version }}
+
+# ── Expected output of imagetools inspect ────────────────────────────
+# Name:      ghcr.io/company/recsys-inference:1.0.0
+# MediaType: application/vnd.oci.image.index.v1+json
+# Manifests:
+#   Name:     ghcr.io/company/recsys-inference:1.0.0@sha256:abc...
+#   Platform: linux/amd64
+#
+#   Name:     ghcr.io/company/recsys-inference:1.0.0@sha256:def...
+#   Platform: linux/arm64`,
+          notes: [
+            "QEMU emulation allows building arm64 images on amd64 runners. It is 3-5x slower than native but eliminates the need for arm64 CI runners.",
+            "For faster multi-arch builds, use native arm64 runners (GitHub offers them as larger runners) and merge manifests separately.",
+            "The resulting manifest list means 'docker pull recsys:1.0.0' automatically selects the correct architecture — no user intervention needed.",
+            "PyTorch wheel availability differs by architecture. Verify that all Python dependencies have arm64 wheels, or they will be compiled from source (very slow under QEMU).",
+            "AWS Graviton (arm64) instances are 20% cheaper than equivalent x86 instances. Multi-arch builds enable cost savings without code changes.",
+          ]
+        },
+        {
+          title: "docker/metadata-action Tag Strategies",
+          desc: "Automatic tag generation from git context. Different events (push, tag, PR) produce different tags, eliminating manual tag management.",
+          lang: "yaml",
+          filename: "metadata-examples.yml",
+          code: `# docker/metadata-action generates tags based on git context
+# This removes all manual tag management from your workflow
+
+- uses: docker/metadata-action@v5
+  id: meta
+  with:
+    images: |
+      ghcr.io/company/recsys-inference
+      company/recsys-inference
+    tags: |
+      # On push to main: "main", "sha-abc1234"
+      type=ref,event=branch
+
+      # On PR #42: "pr-42"
+      type=ref,event=pr
+
+      # On tag v1.2.3: "1.2.3", "1.2", "1"
+      type=semver,pattern={{version}}
+      type=semver,pattern={{major}}.{{minor}}
+      type=semver,pattern={{major}}
+
+      # Always: short git SHA
+      type=sha,prefix=,format=short
+
+      # Schedule (nightly): "nightly"
+      type=schedule,pattern=nightly
+
+      # Raw static tag
+      type=raw,value=latest,enable={{is_default_branch}}
+
+    labels: |
+      org.opencontainers.image.title=recsys-inference
+      org.opencontainers.image.vendor=Company
+      maintainer=ml-platform@company.com
+
+# ── Tag output examples by trigger ───────────────────────────────────
+# Push to main:     main, sha-abc1234, latest
+# Push tag v1.2.3:  1.2.3, 1.2, 1, sha-abc1234
+# PR #42:           pr-42
+# Scheduled:        nightly, sha-abc1234
+#
+# All tags go into steps.meta.outputs.tags (newline-separated)
+# All labels go into steps.meta.outputs.labels`,
+          notes: [
+            "Semantic versioning tags (1.2.3, 1.2, 1) allow consumers to pin to different levels of stability: exact version, minor, or major.",
+            "The SHA tag (sha-abc1234) provides a unique, immutable reference for every build — essential for tracing a running container back to its exact source code.",
+            "latest is only applied on the default branch (main). Never push :latest from feature branches — it would overwrite the stable tag.",
+            "PR tags (pr-42) allow testing the exact image that a PR will produce without merging — essential for integration testing in staging environments.",
+            "Multiple images in the images field push the same build to multiple registries (e.g., GHCR + Docker Hub) with all the same tags — useful for redundancy.",
+          ]
+        },
+      ]
     },
-    // ──────────────────────────────────────────────────────────────────────
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 8: System Design — Complete ML Platform
+    // ═══════════════════════════════════════════════════════════════════════════
     {
       id: "system-design",
-      title: "System Design Case Studies",
-      icon: "🏗️",
+      title: "System Design: Complete ML Platform",
+      icon: "🏛️",
       items: [
-        // ── Case Study 1 ────────────────────────────────────────────────
         {
-          title: "Case Study 1: ML Training Pipeline — Train Inside Docker, Persist Model Outside",
-          desc: `Problem: A data scientist runs GPU-accelerated PyTorch training inside a container. The trained model checkpoint (several GB) must be saved to the host filesystem so that a separate, lightweight inference container can serve it — without baking the model weights into any image.
-
-Key design decisions:
-• Use a named bind mount (host path) for \`/models\` — not a named volume — so ops can rsync / back up the path directly.
-• Training container is ephemeral (--rm); it writes to /models and exits. The image itself stays small (~4 GB GPU runtime, but no weights).
-• Inference container mounts the same host path read-only. It can be restarted independently and rolled back by pointing at a different checkpoint directory.
-• A separate "exporter" stage converts the raw checkpoint to TorchScript/ONNX for the inference server, keeping concerns separated.`,
-          lang: "bash",
-          filename: "ml-training-pipeline.sh",
-          code: `# ── Directory layout on the HOST ──────────────────────────────────────
-# /data/ml-project/
-#   datasets/          ← training data (read-only for container)
-#   models/
-#     checkpoints/     ← raw .pt checkpoints written by trainer
-#     exports/         ← TorchScript / ONNX for inference server
-#   code/              ← Python source (bind-mounted for dev iteration)
-
-mkdir -p /data/ml-project/{datasets,models/checkpoints,models/exports,code}
-
-# ── Stage 1: Training container (GPU, ephemeral, --rm) ────────────────
-# The image bundles the Python environment, NOT the weights.
-# We mount data + code + output dir from the host.
-docker run --rm \\
-  --name trainer \\
-  --gpus '"device=0"' \\
-  --shm-size=8g \\            # PyTorch DataLoader uses /dev/shm for multiprocessing
-  --memory=32g \\
-  --cpus=8 \\
-  --env EPOCHS=50 \\
-  --env BATCH_SIZE=64 \\
-  --env CHECKPOINT_DIR=/models/checkpoints \\
-  --env WANDB_API_KEY_FILE=/run/secrets/wandb_key \\
-  --mount type=bind,src=/data/ml-project/datasets,dst=/datasets,readonly \\
-  --mount type=bind,src=/data/ml-project/code,dst=/app,readonly \\
-  --mount type=bind,src=/data/ml-project/models,dst=/models \\
-  --mount type=secret,id=wandb_key,target=/run/secrets/wandb_key \\
-  my-registry/pytorch-trainer:cuda12.1 \\
-  python /app/train.py
-# train.py saves: /models/checkpoints/epoch_50_val0.92.pt
-
-# How the secret is provided (Docker 23+ with BuildKit secrets at runtime):
-# WANDB_KEY=$(cat ~/.wandb_key) docker run ... (avoid: leaks to process list)
-# Better: use --env-file with a .env file that is .gitignored
-# Best: use --mount type=secret (shown above) — only visible inside the container
-
-# ── Stage 2: Export container (CPU-only, converts checkpoint → ONNX) ──
-docker run --rm \\
-  --name exporter \\
-  --memory=8g \\
-  --cpus=4 \\
-  --env CHECKPOINT=/models/checkpoints/epoch_50_val0.92.pt \\
-  --env OUTPUT_DIR=/models/exports \\
-  --mount type=bind,src=/data/ml-project/models,dst=/models \\
-  my-registry/pytorch-exporter:latest \\
-  python /app/export_onnx.py
-# Writes: /models/exports/model_v1.onnx
-
-# ── Stage 3: Inference server (long-running, read-only model mount) ────
-docker run -d \\
-  --name inference-server \\
-  --restart unless-stopped \\
-  --cpus=4 \\
-  --memory=8g \\
-  -p 8080:8080 \\
-  --mount type=bind,src=/data/ml-project/models/exports,dst=/models,readonly \\
-  --env MODEL_PATH=/models/model_v1.onnx \\
-  --health-cmd='curl -sf http://localhost:8080/health || exit 1' \\
-  --health-interval=15s \\
-  --health-retries=3 \\
-  my-registry/onnx-inference-server:latest
-
-# ── Rollback: point the inference server at an older export ───────────
-# No image rebuild needed — just restart with a different MODEL_PATH:
-docker stop inference-server
-docker run -d \\
-  --name inference-server \\
-  --restart unless-stopped \\
-  -p 8080:8080 \\
-  --mount type=bind,src=/data/ml-project/models/exports,dst=/models,readonly \\
-  --env MODEL_PATH=/models/model_v0.onnx \\
-  my-registry/onnx-inference-server:latest
-
-# ── Key insight ────────────────────────────────────────────────────────
-# Container images stay small and reusable across experiments.
-# Host path = single source of truth for artifacts — easy to back up,
-# rsync to other machines, or mount into K8s PersistentVolumes later.`,
-          notes: [
-            "--shm-size is critical for PyTorch DataLoader with num_workers > 0 — workers communicate via /dev/shm. The default 64 MB is almost always too small.",
-            "Use --gpus '\"device=0\"' (or 'all') only on the training container; inference typically runs on CPU with ONNX Runtime.",
-            "Bind mounts (host path) are preferred over named volumes here because the artifacts need to be accessible to external tools (rsync, S3 sync scripts, monitoring).",
-            "The exporter stage keeps the training image and inference image decoupled — the inference server only needs ONNX Runtime, not the full PyTorch GPU stack.",
-            "In production, swap the host bind mount for a cloud storage volume (AWS EFS, GCS Filestore) mounted into both the training VM and inference cluster nodes.",
-          ],
-        },
-        // ── Case Study 2 ────────────────────────────────────────────────
-        {
-          title: "Case Study 2: Zero-Downtime Web App Deployment with Blue-Green Switch via Compose",
-          desc: `Problem: A team deploys a FastAPI backend behind an nginx reverse proxy. They need zero-downtime deployments with instant rollback capability — on a single VM, without Kubernetes.
-
-Key design decisions:
-• Run two app versions simultaneously (blue + green), each on an isolated Docker network.
-• nginx is the traffic router. Switching traffic = updating nginx upstream + reload (SIGHUP, no restart).
-• HEALTHCHECK on the new container must pass before traffic is cut over.
-• The old container stays up for 60 s as a fallback, then is removed.
-• Named volumes for PostgreSQL and Redis are shared across deployments — DB is not part of the blue/green swap.`,
+          title: "Full ML Platform — compose.yml",
+          desc: "A complete ML recommendation platform with all components: API gateway, inference service, feature store (Redis), vector database (Qdrant), async processing (Celery), PostgreSQL, and monitoring (Prometheus + Grafana).",
           lang: "yaml",
-          filename: "docker-compose.blue-green.yml",
-          code: `# compose.yml — baseline services (DB, cache, proxy) always running
+          filename: "compose.platform.yml",
+          code: `# compose.platform.yml — Complete ML Recommendation Platform
+# Architecture:
+#   Client -> Traefik (gateway) -> API (FastAPI) -> Model Server (gRPC)
+#                                      |-> Redis (feature cache + predictions)
+#                                      |-> Qdrant (vector similarity search)
+#                                      |-> PostgreSQL (request log + experiments)
+#                                      |-> Celery Worker -> Redis (broker)
+#   Prometheus + Grafana for monitoring
+
 services:
 
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: appdb
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
-    secrets: [pg_password]
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks: [backend]
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-    networks: [backend]
-
-  nginx:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
+  # ── API Gateway (Traefik) ──────────────────────────────────────────
+  gateway:
+    image: traefik:v3.0
+    container_name: recsys-gateway
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.entrypoint=metrics"
+      - "--entrypoints.metrics.address=:8082"
     ports:
       - "80:80"
       - "443:443"
+      - "127.0.0.1:8080:8080"   # Dashboard (dev only)
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d       # ← writable: deploy script swaps upstream
-      - ./certs:/etc/nginx/certs:ro
-    networks: [backend, frontend]
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [recsys-net]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    restart: unless-stopped
+
+  # ── Inference API (FastAPI) ────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: recsys-api
     depends_on:
-      postgres: { condition: service_healthy }
-
-volumes:
-  pgdata:
-  redisdata:
-
-secrets:
-  pg_password:
-    file: ./secrets/pg_password.txt
-
-networks:
-  backend:
-  frontend:
-
----
-# nginx/conf.d/upstream.conf — managed by deploy.sh, NOT by humans
-# Active slot is written here during deployment.
-# upstream app {
-#     server app-blue:8000;   ← or app-green:8000
-# }`,
-          lang2: "bash",
-          filename2: "deploy.sh",
-          code2: `#!/usr/bin/env bash
-# deploy.sh — zero-downtime blue/green swap
-# Usage: ./deploy.sh ghcr.io/org/myapp:v2.3.1
-set -euo pipefail
-
-IMAGE="$1"
-COMPOSE_FILE="compose.yml"
-UPSTREAM_CONF="./nginx/conf.d/upstream.conf"
-
-# ── 1. Determine current active slot ────────────────────────────────
-if docker ps --filter name=app-blue --filter status=running -q | grep -q .; then
-  ACTIVE="blue"; IDLE="green"
-else
-  ACTIVE="green"; IDLE="blue"
-fi
-echo "Active: $ACTIVE  →  Deploying to: $IDLE"
-
-# ── 2. Start the idle slot with the new image ───────────────────────
-docker run -d \\
-  --name "app-$IDLE" \\
-  --network backend \\         # same network as postgres + redis + nginx
-  --network-alias "app-$IDLE" \\
-  --restart unless-stopped \\
-  --memory=512m --cpus=1 \\
-  --env-file .env.production \\
-  --env DB_HOST=postgres \\
-  --env REDIS_HOST=redis \\
-  --health-cmd='curl -sf http://localhost:8000/health || exit 1' \\
-  --health-interval=10s \\
-  --health-retries=6 \\       # 60 s window to become healthy
-  --health-start-period=20s \\ # grace period before checks start
-  "$IMAGE"
-
-# ── 3. Wait for the new container to be healthy ─────────────────────
-echo "Waiting for app-$IDLE to become healthy..."
-for i in $(seq 1 18); do   # 18 × 10 s = 180 s timeout
-  STATUS=$(docker inspect --format='{{.State.Health.Status}}' "app-$IDLE")
-  [ "$STATUS" = "healthy" ] && break
-  [ "$STATUS" = "unhealthy" ] && {
-    echo "New container is unhealthy. Aborting."
-    docker rm -f "app-$IDLE"
-    exit 1
-  }
-  echo "  Status: $STATUS (attempt $i/18)..."
-  sleep 10
-done
-[ "$STATUS" != "healthy" ] && { echo "Timeout waiting for health."; docker rm -f "app-$IDLE"; exit 1; }
-
-# ── 4. Atomic nginx upstream switch (SIGHUP, no downtime) ───────────
-cat > "$UPSTREAM_CONF" <<EOF
-upstream app {
-    server app-$IDLE:8000;
-}
-EOF
-docker exec nginx nginx -s reload
-echo "Traffic switched to app-$IDLE"
-
-# ── 5. Drain and remove the old container ───────────────────────────
-echo "Draining app-$ACTIVE (60 s)..."
-sleep 60
-docker rm -f "app-$ACTIVE"
-echo "Deployment complete. Active slot: $IDLE"`,
-          notes: [
-            "nginx -s reload sends SIGHUP which triggers a graceful reload — existing connections finish, new connections use the updated upstream. Zero dropped requests.",
-            "HEALTHCHECK --health-start-period gives the app time to warm up (DB connections, model loading) before checks count against retries.",
-            "The 60-second drain after the switch lets in-flight requests on the old slot complete. Tune based on your p99 request latency.",
-            "Named volumes (pgdata, redisdata) are outside the blue/green swap — they persist across deployments and are shared by both slots.",
-            "This pattern works on a single VM. In production, the same concept maps directly to Kubernetes Deployments with RollingUpdate strategy and readinessProbes.",
-          ],
-        },
-        // ── Case Study 3 ────────────────────────────────────────────────
-        {
-          title: "Case Study 3: Containerized ETL Pipeline — Multi-Stage Data Processing with Sidecar Log Shipping",
-          desc: `Problem: A data engineering team runs a nightly ETL pipeline: (1) extract from a REST API, (2) transform/validate with pandas, (3) load into PostgreSQL. Each stage is a separate container so it can be scaled, retried, or replaced independently. A sidecar container ships structured logs to an external observability platform.
-
-Key design decisions:
-• Stages communicate via a shared tmpfs volume (in-memory, fast, auto-deleted when containers exit).
-• A named volume stores the final "loaded" confirmation file — used as a success sentinel for idempotency checks on retry.
-• The sidecar (Fluent Bit) shares the log volume with all pipeline stages — no application-level log forwarding code needed.
-• Resource limits are set per stage reflecting actual workload (extract is I/O-bound, transform is CPU/mem-bound).
-• depends_on with condition: service_completed_successfully ensures strict ordering.`,
-          lang: "yaml",
-          filename: "compose.etl-pipeline.yml",
-          code: `# compose.etl-pipeline.yml
-# Run: docker compose -f compose.etl-pipeline.yml up --abort-on-container-exit
-services:
-
-  # ── Stage 0: pre-flight idempotency check ─────────────────────────
-  check-already-run:
-    image: alpine:3.20
-    volumes:
-      - etl-state:/state
-    # Exit 0 if already completed today, exit 1 if we should proceed.
-    # Compose --abort-on-container-exit will stop the stack on exit 0,
-    # which is intentional — we use a wrapper script to interpret the code.
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        DATE=$(date +%Y-%m-%d)
-        if [ -f /state/completed_$$DATE ]; then
-          echo "ETL already completed for $$DATE, skipping."
-          exit 0
-        fi
-        echo "No completion marker found. Proceeding."
-        exit 1   # non-zero so Compose continues to dependent services
-
-  # ── Stage 1: Extract ──────────────────────────────────────────────
-  extract:
-    image: my-registry/etl-extract:latest
-    restart: "no"
-    depends_on:
-      check-already-run:
-        condition: service_completed_successfully
+      postgres:      { condition: service_healthy }
+      redis:         { condition: service_healthy }
+      model-server:  { condition: service_healthy }
+      qdrant:        { condition: service_healthy }
     environment:
-      API_URL: https://api.source.example.com/v2/records
-      OUTPUT_FILE: /workspace/raw.jsonl
-      LOG_FILE: /logs/extract.jsonl
-    env_file: [.env.etl]
-    secrets: [source_api_token]
-    volumes:
-      - workspace:/workspace         # tmpfs: fast, auto-cleaned
-      - etl-logs:/logs               # shared with sidecar
-    networks: [pipeline-net]
-    mem_limit: 256m
-    cpus: "0.5"                      # I/O-bound: doesn't need much CPU
+      DATABASE_URL: postgresql+asyncpg://recsys:\\\${DB_PASSWORD}@postgres:5432/recsys
+      REDIS_URL: redis://:\\\${REDIS_PASSWORD}@redis:6379/0
+      MODEL_SERVER_URL: model-server:50051
+      QDRANT_URL: http://qdrant:6333
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      WORKERS: "4"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.api.rule: "Host(\`api.recsys.local\`)"
+      traefik.http.routers.api.entrypoints: "web"
+      traefik.http.services.api.loadbalancer.server.port: "8000"
+      traefik.http.services.api.loadbalancer.healthcheck.path: "/health"
+      traefik.http.services.api.loadbalancer.healthcheck.interval: "10s"
+    networks: [recsys-net]
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /workspace/raw.jsonl ] || exit 1"]
-      interval: 5s
-      retries: 12
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+      replicas: 2
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
 
-  # ── Stage 2: Transform / Validate ─────────────────────────────────
-  transform:
-    image: my-registry/etl-transform:latest
-    restart: "no"
-    depends_on:
-      extract:
-        condition: service_completed_successfully
-    environment:
-      INPUT_FILE: /workspace/raw.jsonl
-      OUTPUT_FILE: /workspace/clean.parquet
-      SCHEMA_FILE: /app/schemas/records_v3.json
-      LOG_FILE: /logs/transform.jsonl
-      REJECT_THRESHOLD: "0.05"       # fail if >5% rows rejected
+  # ── Model Server (PyTorch gRPC) ────────────────────────────────────
+  model-server:
+    build:
+      context: ./model-server
+      dockerfile: Dockerfile
+    container_name: recsys-model-server
     volumes:
-      - workspace:/workspace
-      - etl-logs:/logs
-    networks: [pipeline-net]
-    mem_limit: 2g                    # pandas needs headroom
-    cpus: "2"                        # CPU-bound: vectorised ops
-
-  # ── Stage 3: Load ─────────────────────────────────────────────────
-  load:
-    image: my-registry/etl-load:latest
-    restart: "no"
-    depends_on:
-      transform:
-        condition: service_completed_successfully
+      - models:/app/models:ro
     environment:
-      INPUT_FILE: /workspace/clean.parquet
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: warehouse
-      DB_USER: etl_writer
-      LOG_FILE: /logs/load.jsonl
-      STATE_DIR: /state
-    secrets: [db_password]
-    volumes:
-      - workspace:/workspace
-      - etl-logs:/logs
-      - etl-state:/state             # writes completion sentinel here
-    networks: [pipeline-net]
-    mem_limit: 512m
-    cpus: "1"
+      MODEL_PATH: /app/models/recommendation.pt
+      GRPC_PORT: "50051"
+      OMP_NUM_THREADS: "4"
+      TORCH_NUM_THREADS: "4"
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import grpc; ch=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4.0"
+    restart: unless-stopped
 
-  # ── Sidecar: Fluent Bit log shipper ───────────────────────────────
-  # Shares the log volume. Reads JSONL files written by each stage
-  # and forwards to an observability backend (Loki, Datadog, etc.)
-  log-shipper:
-    image: fluent/fluent-bit:3.1
-    restart: "no"
-    depends_on:
-      - extract      # start as soon as extract begins writing logs
+  # ── Feature Store / Cache (Redis) ──────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: recsys-redis
+    command: >
+      redis-server
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save 300 100
+      --appendonly yes
+      --requirepass \\\${REDIS_PASSWORD}
     volumes:
-      - etl-logs:/logs:ro
-      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - redis-data:/data
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "\\\${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1280M
+          cpus: "1.0"
+    restart: unless-stopped
+
+  # ── Vector Database (Qdrant) ───────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:v1.8.1
+    container_name: recsys-qdrant
+    volumes:
+      - qdrant-data:/qdrant/storage
     environment:
-      LOKI_HOST: loki.monitoring.internal
-      LOKI_PORT: "3100"
-      PIPELINE_RUN_ID: "\${PIPELINE_RUN_ID:-unknown}"
-    networks: [pipeline-net]
-    mem_limit: 64m
-    cpus: "0.1"
+      QDRANT__SERVICE__GRPC_PORT: "6334"
+    networks: [recsys-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+    restart: unless-stopped
 
-  # ── Dependency: PostgreSQL (could be external in production) ──────
+  # ── PostgreSQL — request log + A/B experiments ─────────────────────
   postgres:
     image: postgres:16-alpine
-    restart: unless-stopped
+    container_name: recsys-postgres
     environment:
-      POSTGRES_DB: warehouse
-      POSTGRES_USER: etl_writer
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    secrets: [db_password]
+      POSTGRES_DB: recsys
+      POSTGRES_USER: recsys
+      POSTGRES_PASSWORD: \\\${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks: [recsys-net]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U etl_writer -d warehouse"]
+      test: ["CMD-SHELL", "pg_isready -U recsys -d recsys"]
       interval: 10s
+      timeout: 5s
       retries: 5
-    networks: [pipeline-net]
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    restart: unless-stopped
+
+  # ── Async Worker (Celery) ──────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: recsys-worker
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    command: ["celery", "-A", "src.tasks", "worker", "--loglevel=info", "--concurrency=4"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://recsys:\\\${DB_PASSWORD}@postgres:5432/recsys
+      CELERY_BROKER_URL: redis://:\\\${REDIS_PASSWORD}@redis:6379/1
+      QDRANT_URL: http://qdrant:6333
+    networks: [recsys-net]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+    restart: unless-stopped
+
+  # ── Prometheus (metrics) ───────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: recsys-prometheus
+    profiles: [monitoring]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-lifecycle"
+    networks: [recsys-net]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    restart: unless-stopped
+
+  # ── Grafana (dashboards) ───────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: recsys-grafana
+    profiles: [monitoring]
+    depends_on: [prometheus]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: \\\${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks: [recsys-net]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    restart: unless-stopped
 
 volumes:
-  workspace:
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
-      o: size=4g,mode=1777    # in-memory workspace — fast I/O, auto-wiped on compose down
-  etl-logs:                   # named volume: sidecar reads, stages write
-  etl-state:                  # persists completion sentinels across runs
   pgdata:
-
-secrets:
-  source_api_token:
-    file: ./secrets/source_api_token.txt
-  db_password:
-    file: ./secrets/db_password.txt
+  redis-data:
+  models:
+  qdrant-data:
+  prometheus-data:
+  grafana-data:
 
 networks:
-  pipeline-net:`,
+  recsys-net:
+    driver: bridge`,
           notes: [
-            "tmpfs as a Compose volume (driver_opts type: tmpfs) gives you in-memory I/O between stages — ideal for intermediate files that are large but short-lived. No disk writes, automatic cleanup.",
-            "condition: service_completed_successfully (Compose 2.1+) means a stage only starts if the previous container exited with code 0. A non-zero exit aborts the pipeline — no partial loads.",
-            "The sidecar pattern (log-shipper) keeps observability concerns out of business logic containers. Fluent Bit tails JSONL log files; stages just append to a file — no SDK, no network call in the app code.",
-            "etl-state with a date-stamped sentinel file provides idempotency: re-running the compose stack on the same day is a no-op. This is cheap, file-based, and works even if the DB was already loaded.",
-            "In production this pipeline would be triggered by Airflow, Prefect, or a cron job. The container abstraction means you can run the exact same images locally, in CI, and on the production scheduler with no code changes.",
-          ],
+            "Traefik as API gateway provides automatic service discovery via Docker labels, SSL termination, and load balancing — no manual nginx config needed.",
+            "The API has replicas: 2, so Traefik automatically load-balances between both instances. Health check on the load balancer ensures traffic only goes to healthy replicas.",
+            "Qdrant is a vector database for similarity search — the recommendation system uses it to find similar items/users based on embedding vectors from the ML model.",
+            "Monitoring (Prometheus + Grafana) is behind the 'monitoring' profile — not started by default. Use 'docker compose --profile monitoring up' to include it.",
+            "Every service has resource limits, health checks, and restart policies — the three pillars of container reliability in a multi-service architecture.",
+          ]
         },
-      ],
+        {
+          title: "Production Health Check Patterns",
+          desc: "Health check patterns for different service types in the ML platform. Proper health checks enable self-healing and prevent routing traffic to broken services.",
+          lang: "python",
+          filename: "health.py",
+          code: `"""
+RecSys Health Check Endpoints — Production Patterns
+Three levels: liveness, readiness, and startup probes
+"""
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse
+import asyncio
+import time
+from contextlib import asynccontextmanager
+
+# ── Global state for health tracking ─────────────────────────────────
+_health_state = {
+    "model_loaded": False,
+    "db_connected": False,
+    "redis_connected": False,
+    "startup_time": None,
+    "last_prediction_time": None,
+}
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: load model, connect to dependencies."""
+    _health_state["startup_time"] = time.time()
+
+    # Connect to dependencies
+    await connect_database()
+    _health_state["db_connected"] = True
+
+    await connect_redis()
+    _health_state["redis_connected"] = True
+
+    # Load ML model (can take 10-30 seconds for large models)
+    await load_model()
+    _health_state["model_loaded"] = True
+
+    yield  # App is running
+
+    # Shutdown: graceful cleanup
+    await close_connections()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+# ── Liveness Probe ───────────────────────────────────────────────────
+# "Is the process alive and not deadlocked?"
+# If this fails, the container should be RESTARTED
+@app.get("/healthz")
+async def liveness():
+    """Minimal check: can the event loop respond?
+    Do NOT check dependencies here — a slow DB should not
+    cause the container to restart (that makes things worse).
+    """
+    return {"status": "alive"}
+
+
+# ── Readiness Probe ──────────────────────────────────────────────────
+# "Can this instance serve traffic?"
+# If this fails, remove from load balancer but do NOT restart
+@app.get("/ready")
+async def readiness():
+    """Check all dependencies. If any are down, this instance
+    should not receive traffic until they recover.
+    """
+    checks = {}
+
+    # Check model is loaded
+    checks["model"] = _health_state["model_loaded"]
+
+    # Check database connectivity
+    try:
+        await db.execute("SELECT 1")
+        checks["database"] = True
+    except Exception:
+        checks["database"] = False
+
+    # Check Redis connectivity
+    try:
+        await redis.ping()
+        checks["redis"] = True
+    except Exception:
+        checks["redis"] = False
+
+    # Check model server (gRPC)
+    try:
+        await model_client.health_check(timeout=2.0)
+        checks["model_server"] = True
+    except Exception:
+        checks["model_server"] = False
+
+    all_healthy = all(checks.values())
+
+    if not all_healthy:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"status": "not_ready", "checks": checks},
+        )
+
+    return {"status": "ready", "checks": checks}
+
+
+# ── Startup Probe ────────────────────────────────────────────────────
+# "Has the app finished initialising?"
+# Prevents liveness/readiness from running during slow startup
+@app.get("/startup")
+async def startup_probe():
+    """Return 200 only after model is loaded and all
+    connections are established. Kubernetes uses this to
+    know when to start liveness/readiness checks.
+    """
+    if not _health_state["model_loaded"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model still loading",
+        )
+    return {"status": "started", "uptime_seconds": time.time() - _health_state["startup_time"]}
+
+
+# ── Detailed Health (for monitoring dashboards) ──────────────────────
+@app.get("/health")
+async def detailed_health():
+    """Full health report with latency metrics.
+    Used by monitoring systems, not by container orchestrators.
+    """
+    start = time.time()
+
+    # Measure dependency latencies
+    db_latency = await measure_latency(db.execute, "SELECT 1")
+    redis_latency = await measure_latency(redis.ping)
+
+    return {
+        "status": "healthy" if _health_state["model_loaded"] else "degraded",
+        "uptime_seconds": time.time() - _health_state["startup_time"],
+        "dependencies": {
+            "database": {"connected": True, "latency_ms": db_latency},
+            "redis": {"connected": True, "latency_ms": redis_latency},
+            "model": {"loaded": _health_state["model_loaded"]},
+        },
+        "last_prediction": _health_state["last_prediction_time"],
+        "check_latency_ms": round((time.time() - start) * 1000, 2),
+    }
+
+
+async def measure_latency(func, *args):
+    start = time.time()
+    try:
+        await func(*args)
+        return round((time.time() - start) * 1000, 2)
+    except Exception:
+        return -1`,
+          notes: [
+            "Liveness checks should NEVER test dependencies (DB, Redis). If the DB is slow, restarting the API container makes the situation worse (thundering herd).",
+            "Readiness checks test all dependencies. Failing readiness removes the instance from the load balancer without restarting it — traffic shifts to healthy instances.",
+            "Startup probes prevent premature liveness/readiness checks during model loading. Without a startup probe, a 30-second model load triggers liveness timeout and causes a restart loop.",
+            "The /health endpoint is for monitoring dashboards (Grafana/Prometheus), not for container orchestration. It includes latency metrics that would be too expensive for frequent probes.",
+            "These three probe levels (startup -> liveness -> readiness) map directly to Kubernetes probe types and Docker HEALTHCHECK with start_period.",
+          ]
+        },
+        {
+          title: "Resource Limits and Container Sizing",
+          desc: "How to right-size containers for ML workloads. Under-provisioning causes OOM kills; over-provisioning wastes money. This script profiles and recommends limits.",
+          lang: "bash",
+          filename: "resource-sizing.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Monitor actual resource usage under load ──────────────────────────
+echo "=== Current resource usage for all RecSys services ==="
+docker compose -f compose.platform.yml stats --no-stream \\
+  --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.MemPerc}}\\t{{.NetIO}}\\t{{.BlockIO}}"
+
+# ── Run a load test and observe peak usage ────────────────────────────
+# Terminal 1: watch stats
+# docker compose stats
+
+# Terminal 2: run load test (k6, locust, or hey)
+# hey -n 10000 -c 50 -m POST \\
+#   -H "Content-Type: application/json" \\
+#   -d '{"user_id":"u123","context":{"page":"home"}}' \\
+#   http://localhost:8000/predict
+
+# ── Recommended limits by service type ────────────────────────────────
+cat <<'SIZING'
+Service Type          | Memory Limit | CPU Limit | Why
+──────────────────────|──────────────|───────────|─────────────────────────
+API (FastAPI)         | 1-2 GB       | 1-2 cores | Mostly I/O bound; memory for request objects
+Model Server (PyTorch)| 2-8 GB       | 2-4 cores | Model weights in memory; inference is CPU-bound
+Redis (cache)         | 512M-2 GB    | 0.5-1     | In-memory store; size = dataset
+PostgreSQL            | 512M-2 GB    | 0.5-1     | shared_buffers + connections
+Qdrant (vector DB)    | 1-4 GB       | 1-2       | Vector index in memory; size = collection
+Celery Worker         | 512M-1 GB    | 1-2       | Depends on task; batch predictions need more
+Traefik (gateway)     | 128-256 MB   | 0.25-0.5  | Very lightweight; just proxying
+Prometheus            | 256-512 MB   | 0.5       | Depends on scrape targets and retention
+Grafana               | 128-256 MB   | 0.25-0.5  | Dashboard rendering; mostly idle
+SIZING
+
+# ── Detect OOM kills ─────────────────────────────────────────────────
+echo ""
+echo "=== Checking for OOM-killed containers ==="
+for container in \$(docker compose -f compose.platform.yml ps -q 2>/dev/null); do
+  NAME=\$(docker inspect "\$container" --format '{{.Name}}' | tr -d '/')
+  OOM=\$(docker inspect "\$container" --format '{{.State.OOMKilled}}')
+  if [ "\$OOM" = "true" ]; then
+    echo "WARNING: \$NAME was OOM-killed! Increase memory limit."
+  fi
+done
+
+# ── Memory limit best practices for ML ────────────────────────────────
+# 1. Set memory == memory-swap (disable swap — ML should fail fast, not swap)
+# 2. Start at 2x observed peak usage, then tune down
+# 3. PyTorch models: memory = model_size_on_disk * 2-3x (weights + activations + overhead)
+# 4. Always set --pids-limit to prevent fork bombs
+# 5. Monitor with docker stats or Prometheus cadvisor`,
+          notes: [
+            "Set memory and memory-swap to the same value to disable swap. ML workloads that swap become 100-1000x slower — it is better to fail fast and scale horizontally.",
+            "Start with generous limits (2-3x observed peak) and tune down gradually. OOM kills in production are much more expensive than slightly over-provisioning.",
+            "PyTorch model memory usage is roughly: model_file_size * 2 (weights + overhead) + batch_size * per_sample_activation_memory. Profile with torch.cuda.memory_summary().",
+            "docker stats shows real-time usage but misses spikes. For accurate profiling, use Prometheus + cAdvisor which records time-series data at second resolution.",
+            "In Kubernetes, requests (guaranteed) and limits (maximum) are separate. Set requests to p50 usage and limits to p99 + 20% headroom.",
+          ]
+        },
+        {
+          title: "Debugging a Production Container Crash",
+          desc: "Systematic playbook for debugging a container that crashes on startup, OOM-kills, or becomes unresponsive. The RecSys model server is crashing — walk through the diagnosis.",
+          lang: "bash",
+          filename: "debug-crash.sh",
+          code: `#!/usr/bin/env bash
+set -euo pipefail
+
+CONTAINER="recsys-model-server"
+
+# ── Step 1: Check container state ─────────────────────────────────────
+echo "=== Container State ==="
+docker inspect "\$CONTAINER" --format '
+  Status:     {{.State.Status}}
+  ExitCode:   {{.State.ExitCode}}
+  OOMKilled:  {{.State.OOMKilled}}
+  Error:      {{.State.Error}}
+  StartedAt:  {{.State.StartedAt}}
+  FinishedAt: {{.State.FinishedAt}}
+  RestartCnt: {{.RestartCount}}
+'
+
+# Exit codes:
+#   0   — normal exit
+#   1   — application error (uncaught exception)
+#   137 — SIGKILL (OOM kill or docker kill)
+#   139 — SIGSEGV (segmentation fault — C extension crash)
+#   143 — SIGTERM (docker stop, graceful shutdown)
+
+# ── Step 2: Check logs ───────────────────────────────────────────────
+echo "=== Last 100 log lines ==="
+docker logs "\$CONTAINER" --tail 100 --timestamps 2>&1
+
+echo "=== Logs around the crash time ==="
+docker logs "\$CONTAINER" --since 5m --until 1m 2>&1
+
+# ── Step 3: Check system-level events ─────────────────────────────────
+echo "=== Docker events (last 10 minutes) ==="
+docker events --since 10m --until 0s --filter "container=\$CONTAINER" 2>/dev/null &
+EVENTS_PID=\$!
+sleep 2
+kill \$EVENTS_PID 2>/dev/null || true
+
+# ── Step 4: If OOM-killed, check memory ──────────────────────────────
+OOM=\$(docker inspect "\$CONTAINER" --format '{{.State.OOMKilled}}')
+if [ "\$OOM" = "true" ]; then
+  echo "=== OOM KILL DETECTED ==="
+  echo "Memory limit:"
+  docker inspect "\$CONTAINER" --format '{{.HostConfig.Memory}}'
+
+  echo "Peak memory usage (from cgroup):"
+  # On Linux, check cgroup memory stats:
+  # cat /sys/fs/cgroup/docker/<container-id>/memory.peak
+
+  echo "Fix options:"
+  echo "  1. Increase --memory limit"
+  echo "  2. Use a smaller model (quantized, distilled)"
+  echo "  3. Lazy-load model components"
+  echo "  4. Reduce batch size / worker count"
+fi
+
+# ── Step 5: Debug interactively ───────────────────────────────────────
+echo "=== Starting debug container with same config ==="
+# Override entrypoint to get a shell instead of the crashing app
+docker run --rm -it \\
+  --name "\$CONTAINER-debug" \\
+  --entrypoint /bin/bash \\
+  --memory 4g \\
+  -v models:/app/models:ro \\
+  recsys-model-server:latest
+
+# Inside the debug container:
+#   python -c "import torch; m = torch.load('/app/models/recommendation.pt'); print(f'Model params: {sum(p.numel() for p in m.parameters()):,}')"
+#   python -c "import resource; print(f'Memory limit: {resource.getrlimit(resource.RLIMIT_AS)}')"
+#   python -c "import psutil; print(f'Available memory: {psutil.virtual_memory().available / 1e9:.1f} GB')"
+
+# ── Step 6: Check host-level issues ──────────────────────────────────
+echo "=== Host resource status ==="
+docker system df
+echo ""
+docker info --format 'Containers: {{.Containers}} | Running: {{.ContainersRunning}} | Memory: {{.MemTotal}}'
+
+# ── Step 7: Check for cascading failures ──────────────────────────────
+echo "=== All service health ==="
+docker compose -f compose.platform.yml ps \\
+  --format "table {{.Name}}\\t{{.Status}}"`,
+          notes: [
+            "Exit code 137 means the process received SIGKILL — either from the OOM killer (check OOMKilled flag) or from docker kill / docker stop timeout.",
+            "Exit code 139 (SIGSEGV) in ML containers usually means a C extension (PyTorch, numpy) crashed due to incompatible CUDA versions or corrupted model files.",
+            "Always check docker events for the time window around the crash — it reveals the exact sequence of container state changes that led to the failure.",
+            "Overriding --entrypoint to /bin/bash lets you get a shell inside the exact same environment where the crash occurs, with access to the model files and dependencies.",
+            "Cascading failures are common: model-server crashes -> API cannot serve predictions -> health check fails -> API restarts -> thundering herd on model-server. Check all services, not just the crashed one.",
+          ]
+        },
+      ]
     },
+
   ];
 })();
+

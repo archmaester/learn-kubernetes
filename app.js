@@ -9,6 +9,7 @@ let state = {
   completedTopics: {},   // { "moduleId:topicIdx": true }
   completedLabs: {},     // { "moduleId:labIdx": true }
   theme: "dark",
+  highlights: {},        // { "moduleId:lessonId": [{ id, text, color, nth }] }
 };
 
 function loadState() {
@@ -543,6 +544,208 @@ function renderCodeExamples(m, container) {
 }
 
 /* =============================================
+   HIGHLIGHTS
+   ============================================= */
+const HIGHLIGHT_COLORS = [
+  { name: "yellow", bg: "#fde047", text: "#1a1a00" },
+  { name: "green",  bg: "#86efac", text: "#052e16" },
+  { name: "blue",   bg: "#93c5fd", text: "#0c1a3d" },
+  { name: "pink",   bg: "#f9a8d4", text: "#3d0020" },
+  { name: "orange", bg: "#fdba74", text: "#3d1a00" },
+];
+
+let _highlightTooltip = null;
+
+function getHighlightTooltip() {
+  if (_highlightTooltip) return _highlightTooltip;
+  const el = document.createElement("div");
+  el.id = "highlightTooltip";
+  el.className = "highlight-tooltip";
+  el.innerHTML = `
+    <div class="highlight-tooltip-label">Highlight</div>
+    <div class="highlight-color-swatches">
+      ${HIGHLIGHT_COLORS.map(c => `<button class="highlight-swatch" data-color="${c.name}" style="background:${c.bg}" title="${c.name}"></button>`).join("")}
+    </div>
+  `;
+  document.body.appendChild(el);
+  _highlightTooltip = el;
+  return el;
+}
+
+function hideHighlightTooltip() {
+  const el = document.getElementById("highlightTooltip");
+  if (el) el.classList.remove("visible");
+}
+
+function showHighlightTooltip(x, y, onColor) {
+  const el = getHighlightTooltip();
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+  // Remove old listeners by replacing swatches container
+  const swatches = el.querySelectorAll(".highlight-swatch");
+  swatches.forEach(btn => {
+    const cloned = btn.cloneNode(true);
+    btn.parentNode.replaceChild(cloned, btn);
+  });
+  el.querySelectorAll(".highlight-swatch").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onColor(btn.dataset.color);
+      hideHighlightTooltip();
+    });
+  });
+  el.classList.add("visible");
+}
+
+// Build a list of walkable (highlightable) text nodes under root, with cumulative offsets.
+// Excludes text inside <pre>, <code>, and .lesson-code-block to keep offsets consistent
+// between serialization and application.
+function getHighlightableTextNodes(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (node.parentElement.closest("pre, code, .lesson-code-block")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  let cumulative = 0;
+  let node;
+  while ((node = walker.nextNode())) {
+    nodes.push({ node, start: cumulative, end: cumulative + node.length });
+    cumulative += node.length;
+  }
+  return nodes;
+}
+
+// Serialize a Range relative to a container element.
+// Offset is computed only over highlightable text nodes so it matches applyHighlights.
+function serializeRange(range, container) {
+  const selectedText = range.toString();
+  if (!selectedText.trim()) return null;
+
+  // Skip selections that start inside a code block
+  if (range.startContainer.parentElement &&
+      range.startContainer.parentElement.closest("pre, code, .lesson-code-block")) return null;
+
+  const nodes = getHighlightableTextNodes(container);
+
+  // Find the startContainer in our node list and compute the absolute offset
+  let startOffset = 0;
+  for (const { node, start } of nodes) {
+    if (node === range.startContainer) {
+      startOffset = start + range.startOffset;
+      break;
+    }
+  }
+
+  return { text: selectedText, startOffset, length: selectedText.length };
+}
+
+// Apply all saved highlights for a lesson into its body element
+function applyHighlights(lessonBody, lessonKey) {
+  const entries = (state.highlights[lessonKey] || []);
+  if (!entries.length) return;
+
+  entries.forEach(h => {
+    const color = HIGHLIGHT_COLORS.find(c => c.name === h.color) || HIGHLIGHT_COLORS[0];
+    highlightTextInNode(lessonBody, h.startOffset, h.length, h.id, color);
+  });
+}
+
+// Walk highlightable text nodes and wrap the matching range in a <mark>
+function highlightTextInNode(root, startOffset, length, hid, color) {
+  const nodes = getHighlightableTextNodes(root);
+  const rangeEnd = startOffset + length;
+
+  for (const { node, start, end } of nodes) {
+    if (start <= startOffset && rangeEnd <= end) {
+      const localStart = startOffset - start;
+      const localEnd = rangeEnd - start;
+      const before = node.textContent.slice(0, localStart);
+      const highlighted = node.textContent.slice(localStart, localEnd);
+      const after = node.textContent.slice(localEnd);
+
+      if (!highlighted) continue;
+
+      const mark = document.createElement("mark");
+      mark.className = "user-highlight";
+      mark.dataset.hid = hid;
+      mark.dataset.color = color.name;
+      mark.style.background = color.bg;
+      mark.style.color = color.text;
+      mark.textContent = highlighted;
+
+      const parent = node.parentNode;
+      const frag = document.createDocumentFragment();
+      if (before) frag.appendChild(document.createTextNode(before));
+      frag.appendChild(mark);
+      if (after) frag.appendChild(document.createTextNode(after));
+      parent.replaceChild(frag, node);
+      return;
+    }
+  }
+}
+
+function addHighlight(moduleId, lessonId, serialized, colorName) {
+  const key = `${moduleId}:${lessonId}`;
+  if (!state.highlights[key]) state.highlights[key] = [];
+  const id = `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  state.highlights[key].push({ id, text: serialized.text, startOffset: serialized.startOffset, length: serialized.length, color: colorName });
+  saveState();
+  return id;
+}
+
+function removeHighlight(moduleId, lessonId, hid) {
+  const key = `${moduleId}:${lessonId}`;
+  if (!state.highlights[key]) return;
+  state.highlights[key] = state.highlights[key].filter(h => h.id !== hid);
+  if (!state.highlights[key].length) delete state.highlights[key];
+  saveState();
+}
+
+// Attach the selection→highlight listener to a lesson body element
+function attachHighlightListener(lessonBody, moduleId, lessonId, onHighlightChange) {
+  lessonBody.addEventListener("mouseup", (e) => {
+    // Don't trigger inside code blocks
+    if (e.target.closest("pre, code, .lesson-code-block")) return;
+
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+      hideHighlightTooltip();
+      return;
+    }
+
+    const range = sel.getRangeAt(0);
+    // Ensure selection is within this lesson body
+    if (!lessonBody.contains(range.commonAncestorContainer)) {
+      hideHighlightTooltip();
+      return;
+    }
+
+    const serialized = serializeRange(range, lessonBody);
+    if (!serialized) return;
+
+    const rect = range.getBoundingClientRect();
+    const x = Math.max(4, rect.left + rect.width / 2 - 90); // center tooltip
+    const y = Math.max(4, rect.top - 52);                   // above selection (fixed coords)
+
+    showHighlightTooltip(x, y, (colorName) => {
+      addHighlight(moduleId, lessonId, serialized, colorName);
+      sel.removeAllRanges();
+      onHighlightChange();
+    });
+  });
+
+  // Remove highlight on click
+  lessonBody.addEventListener("click", (e) => {
+    const mark = e.target.closest(".user-highlight");
+    if (!mark) return;
+    removeHighlight(moduleId, lessonId, mark.dataset.hid);
+    onHighlightChange();
+  });
+}
+
+/* =============================================
    RENDER LESSONS
    ============================================= */
 function renderLessons(m, container) {
@@ -632,6 +835,17 @@ function renderLessons(m, container) {
   });
 
   if (typeof Prism !== "undefined") Prism.highlightAllUnder(container);
+
+  // Restore and wire up highlights for each lesson
+  lessons.forEach(l => {
+    const body = container.querySelector(`#lsec-${l.id} .lesson-body`);
+    if (!body) return;
+    applyHighlights(body, `${m.id}:${l.id}`);
+    attachHighlightListener(body, m.id, l.id, () => {
+      renderLessons(m, container);
+      if (typeof Prism !== "undefined") Prism.highlightAllUnder(container);
+    });
+  });
 }
 
 function renderLessonBlock(block) {
@@ -710,6 +924,13 @@ document.addEventListener("click", (e) => {
     btn.classList.add("copied");
     setTimeout(() => { btn.textContent = orig; btn.classList.remove("copied"); }, 2000);
   });
+});
+
+// Hide highlight tooltip when clicking outside it
+document.addEventListener("mousedown", (e) => {
+  if (!e.target.closest("#highlightTooltip")) {
+    hideHighlightTooltip();
+  }
 });
 
 function langToPrism(lang) {
@@ -827,6 +1048,7 @@ function init() {
     state.completedModules = {};
     state.completedTopics = {};
     state.completedLabs = {};
+    state.highlights = {};
     saveState();
     renderSidebar();
     if (state.currentView === "dashboard") renderDashboard();

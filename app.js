@@ -670,7 +670,7 @@ function renderLessonBlock(block) {
     case "diagram":
       return `
         <div class="lesson-diagram">
-          <pre class="diagram-pre">${escapeHtml(block.code)}</pre>
+          <pre class="diagram-pre">${escapeHtml(block.code || block.content)}</pre>
         </div>
       `;
 

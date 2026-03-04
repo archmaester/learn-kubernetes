@@ -1,5 +1,6 @@
 // Patches the FastAPI module (m2) with comprehensive code examples.
 // Loaded after curriculum.js and fastapi-lessons.js.
+// All examples follow the Sentiment Analysis Inference API built across the 9 lessons.
 (function patchFastAPIExamples() {
   const m = CURRICULUM.phases[0].modules[1]; // phase-1 (index 0), second module (m2)
 
@@ -7,204 +8,165 @@
 
     // ═══════════════════════════════════════════════════════════════════════
     {
-      id: "app-setup",
+      id: "project-setup",
       icon: "🚀",
-      title: "App Setup & Project Structure",
+      title: "Project Setup & First Endpoint",
       items: [
         {
-          title: "Minimal FastAPI App",
+          title: "Minimal Sentiment API",
           lang: "python",
           filename: "main.py",
-          desc: "The smallest possible FastAPI app. Visit /docs for the auto-generated Swagger UI.",
+          desc: "The starting point — a FastAPI app with one endpoint that will grow into our full service.",
           code: `from fastapi import FastAPI
 
 app = FastAPI(
-    title="AI Inference API",
-    description="Production-grade API for AI model serving",
+    title="Sentiment Analysis API",
+    description="Production-grade ML inference service",
     version="1.0.0",
-    docs_url="/docs",        # Swagger UI — set to None to disable
-    redoc_url="/redoc",      # ReDoc — set to None to disable
-    openapi_url="/openapi.json",
+    docs_url="/docs",        # Swagger UI — set to None in production
+    redoc_url="/redoc",
 )
 
 @app.get("/")
 async def root():
-    return {"message": "API is running", "version": "1.0.0"}
+    return {"service": "sentiment-api", "version": "1.0.0"}
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
-# Run: uvicorn main:app --reload`,
+# Run: uvicorn main:app --reload --port 8000`,
           notes: [
-            "FastAPI is an ASGI app — it requires an ASGI server like Uvicorn",
-            "--reload watches for file changes and restarts the server (dev only)",
+            "FastAPI is ASGI — requires an async server like Uvicorn",
+            "--reload watches for file changes (dev only, never in production)",
             "Visit http://localhost:8000/docs for interactive Swagger UI",
+            "This is the same app we build across all 9 lessons",
           ]
         },
         {
-          title: "Production Project Layout",
+          title: "macOS Setup (Apple Silicon)",
           lang: "bash",
-          filename: "project-structure.sh",
-          desc: "Recommended directory structure for a production FastAPI application.",
-          code: `# Production FastAPI project layout
-my-api/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app + lifespan
-│   ├── config.py            # Settings (pydantic-settings)
-│   ├── database.py          # Engine, sessionmaker, get_db
-│   ├── models.py            # SQLAlchemy ORM models
-│   ├── schemas/             # Pydantic request/response models
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   └── item.py
-│   ├── routers/             # APIRouter modules
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   ├── users.py
-│   │   └── items.py
-│   ├── services/            # Business logic (no HTTP layer)
-│   │   ├── __init__.py
-│   │   └── user_service.py
-│   ├── deps.py              # Shared Depends() functions
-│   └── middleware.py        # Custom middleware
-├── tests/
-│   ├── conftest.py
-│   ├── test_users.py
-│   └── test_auth.py
-├── alembic/                 # DB migrations
-│   └── versions/
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-└── .env`,
+          filename: "setup.sh",
+          desc: "Full setup from scratch — pyenv, venv, and all dependencies for the Sentiment API.",
+          code: `# ── Python via pyenv (native arm64 compilation) ──────────────────────
+brew install pyenv
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.zshrc
+echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.zshrc
+echo 'eval "$(pyenv init -)"' >> ~/.zshrc
+source ~/.zshrc
+
+pyenv install 3.12.4
+pyenv global 3.12.4
+
+# Verify architecture
+python -c "import platform; print(platform.machine())"  # arm64
+
+# ── Project setup ─────────────────────────────────────────────────────
+mkdir sentiment-api && cd sentiment-api
+python -m venv .venv
+source .venv/bin/activate
+
+# ── Dependencies (all we need across 9 lessons) ──────────────────────
+pip install fastapi[standard]         # uvicorn, httpx, python-multipart
+pip install pydantic-settings         # env-based config
+pip install sqlalchemy[asyncio]       # async ORM
+pip install aiosqlite                 # SQLite async driver (dev)
+pip install asyncpg                   # PostgreSQL async driver (prod)
+pip install redis                     # Redis client (async)
+pip install python-jose[cryptography] # JWT encoding/decoding
+pip install "passlib[bcrypt]"         # password hashing
+pip install gunicorn                  # production process manager
+
+pip freeze > requirements.txt`,
           notes: [
-            "Separate routers/, schemas/, services/ prevents one massive file",
-            "Services contain business logic — no FastAPI imports — easy to unit test",
-            "Routers contain HTTP layer only — call services, return responses",
-            "deps.py centralizes Depends() functions used across multiple routers",
+            "pyenv compiles Python natively for arm64 — no Rosetta overhead",
+            "fastapi[standard] bundles uvicorn, httpx, and essentials",
+            "aiosqlite for dev/testing, asyncpg for production PostgreSQL",
+            "passlib[bcrypt] needs quotes in zsh (brackets are glob characters)",
           ]
         },
         {
-          title: "App Factory with Lifespan",
+          title: "Environment Config (Pydantic Settings)",
           lang: "python",
-          filename: "app/main.py",
-          desc: "Production app.py with lifespan, routers, middleware, and CORS.",
-          code: `from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import logging
-
-from app.config import get_settings
-from app.routers import auth, users, items
-from app.middleware import RequestContextMiddleware
-from app.database import engine, Base
-
-logger = logging.getLogger(__name__)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    settings = get_settings()
-    logger.info("Starting up", extra={"env": settings.env})
-
-    # Create tables (in production, use Alembic instead)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    yield
-
-    logger.info("Shutting down")
-    await engine.dispose()
-
-def create_app() -> FastAPI:
-    settings = get_settings()
-    app = FastAPI(
-        title=settings.app_name,
-        version=settings.api_version,
-        lifespan=lifespan,
-        docs_url="/docs" if settings.env != "production" else None,
-    )
-
-    # Middleware (added in reverse execution order)
-    app.add_middleware(RequestContextMiddleware)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Routers
-    app.include_router(auth.router)
-    app.include_router(users.router, prefix="/api/v1")
-    app.include_router(items.router, prefix="/api/v1")
-
-    return app
-
-app = create_app()`,
-          notes: [
-            "create_app() factory pattern enables testing with different settings",
-            "docs_url=None in production hides Swagger from external users (security)",
-            "Middleware added last runs first — CORSMiddleware should run before auth middleware",
-            "include_router with prefix avoids repeating /api/v1 on every route",
-          ]
-        },
-        {
-          title: "Environment Configuration",
-          lang: "python",
-          filename: "app/config.py",
-          desc: "Type-safe settings with pydantic-settings — validates all required env vars at startup.",
-          code: `# pip install pydantic-settings
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+          filename: "config.py",
+          desc: "Type-safe config that validates all env vars at startup — fail fast, not on first request.",
+          code: `from pydantic_settings import BaseSettings
 from typing import Literal
 
 class Settings(BaseSettings):
     # App
-    app_name: str = "My API"
-    api_version: str = "1.0.0"
+    app_name: str = "Sentiment Analysis API"
     env: Literal["development", "staging", "production"] = "development"
-    log_level: str = "INFO"
-
-    # Server
-    host: str = "0.0.0.0"
-    port: int = 8000
-    workers: int = 1
 
     # Database
-    database_url: str                     # required — no default
-    db_pool_size: int = 10
-    db_max_overflow: int = 20
-    db_pool_timeout: int = 30
+    database_url: str = "sqlite+aiosqlite:///./dev.db"
 
     # Redis
-    redis_url: str = "redis://localhost:6379"
-    cache_ttl_seconds: int = 300
+    redis_url: str = "redis://localhost:6379/0"
 
     # JWT
-    secret_key: str                       # required
-    algorithm: str = "HS256"
+    jwt_secret_key: str            # REQUIRED — no default, crashes if missing
     access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
 
-    # CORS
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Model
+    model_name: str = "distilbert-base-uncased-finetuned-sst-2-english"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-    )
+    model_config = {"env_file": ".env"}
 
-@lru_cache()
-def get_settings() -> Settings:
-    return Settings()`,
+settings = Settings()
+
+# .env file:
+# JWT_SECRET_KEY=your-256-bit-secret-generate-with-openssl-rand-hex-32
+# DATABASE_URL=sqlite+aiosqlite:///./dev.db
+# REDIS_URL=redis://localhost:6379/0`,
           notes: [
-            "Fields without defaults are required — app fails fast if env vars are missing",
-            "@lru_cache() ensures Settings is parsed once per process, not per request",
-            "Literal[...] for env restricts to valid environment names",
-            "Use Depends(get_settings) in routes to inject settings — override in tests",
+            "jwt_secret_key has no default — app won't start without it (intentional)",
+            "Literal['development', 'staging', 'production'] restricts to valid values",
+            "Pydantic Settings reads from env vars AND .env file automatically",
+            "Generate secret: openssl rand -hex 32",
+          ]
+        },
+        {
+          title: "Project Structure (Complete)",
+          lang: "bash",
+          filename: "project-structure.sh",
+          desc: "The full project structure after all 9 lessons — every file we build.",
+          code: `sentiment-api/
+├── .venv/
+├── .env                      # local secrets (git-ignored)
+├── .env.example              # template for other devs
+├── .gitignore
+├── .dockerignore
+├── Dockerfile                # multi-stage production build
+├── docker-compose.yml        # local dev (Postgres + Redis)
+├── main.py                   # FastAPI app + lifespan
+├── auth.py                   # JWT + password hashing
+├── model.py                  # SentimentModel (HuggingFace)
+├── schemas.py                # Pydantic request/response models
+├── config.py                 # Pydantic Settings
+├── deps.py                   # all dependencies (DI)
+├── middleware.py              # request context, timing, security
+├── logging_config.py         # structured JSON logging
+├── routers/
+│   ├── auth.py               # /auth/login, /register, /refresh
+│   ├── predict.py            # /predict (API key + caching)
+│   ├── admin.py              # admin routes (JWT + role)
+│   └── health.py             # /health, /health/ready
+├── tests/
+│   ├── conftest.py           # fixtures (fake DB, model, Redis)
+│   ├── test_predict.py       # prediction tests
+│   ├── test_auth.py          # auth flow tests
+│   └── test_middleware.py    # middleware tests
+├── k8s/
+│   └── deployment.yaml       # K8s preview (Module 4)
+├── pyproject.toml
+└── requirements.txt`,
+          notes: [
+            "Every file is introduced in a specific lesson — no surprise files",
+            "routers/ keeps HTTP layer thin — business logic lives in services/deps",
+            "tests/ mirror the routers they test — conftest.py holds shared fixtures",
+            "k8s/ directory is a preview — full coverage in Module 4",
           ]
         },
       ]
@@ -212,371 +174,104 @@ def get_settings() -> Settings:
 
     // ═══════════════════════════════════════════════════════════════════════
     {
-      id: "routing",
-      icon: "🛤️",
-      title: "Routing & Request Handling",
-      items: [
-        {
-          title: "APIRouter with Prefix and Tags",
-          lang: "python",
-          filename: "app/routers/users.py",
-          desc: "Modular routing with APIRouter — keeps routes organized by feature.",
-          code: `from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Annotated
-from app.schemas.user import UserCreate, UserPublic, UserUpdate
-from app.deps import get_db, get_current_user, require_admin
-from app.services.user_service import UserService
-
-router = APIRouter(
-    prefix="/users",
-    tags=["users"],
-    responses={
-        401: {"description": "Not authenticated"},
-        403: {"description": "Not authorized"},
-    }
-)
-
-DB = Annotated[AsyncSession, Depends(get_db)]
-CurrentUser = Annotated[TokenData, Depends(get_current_user)]
-
-@router.get("/", response_model=list[UserPublic])
-async def list_users(
-    db: DB,
-    current_user: CurrentUser,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-    search: str | None = Query(None, description="Filter by username"),
-):
-    service = UserService(db)
-    return await service.list_users(skip=skip, limit=limit, search=search)
-
-@router.get("/{user_id}", response_model=UserPublic)
-async def get_user(user_id: int, db: DB, current_user: CurrentUser):
-    service = UserService(db)
-    user = await service.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-async def create_user(body: UserCreate, db: DB):
-    service = UserService(db)
-    return await service.create_user(body)
-
-@router.patch("/{user_id}", response_model=UserPublic)
-async def update_user(
-    user_id: int,
-    body: UserUpdate,
-    db: DB,
-    current_user: CurrentUser,
-):
-    if current_user.user_id != user_id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Cannot update other users")
-    service = UserService(db)
-    return await service.update_user(user_id, body)
-
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(
-    user_id: int,
-    db: DB,
-    _: Annotated[TokenData, Depends(require_admin)],
-):
-    service = UserService(db)
-    await service.delete_user(user_id)`,
-          notes: [
-            "tags=[\"users\"] groups all routes under the same section in /docs",
-            "responses={401: ...} adds these possible responses to the OpenAPI schema",
-            "Query(0, ge=0) on a function param sets a default AND validation",
-            "DELETE returns 204 No Content — no response body, just status code",
-          ]
-        },
-        {
-          title: "Path, Query, Header, Cookie Parameters",
-          lang: "python",
-          filename: "params.py",
-          desc: "All FastAPI parameter sources with validation examples.",
-          code: `from fastapi import FastAPI, Path, Query, Header, Cookie, Body
-from typing import Annotated
-from enum import Enum
-
-app = FastAPI()
-
-class SortOrder(str, Enum):
-    asc = "asc"
-    desc = "desc"
-
-@app.get("/items/{item_id}")
-async def get_item(
-    # Path param — required, validated
-    item_id: Annotated[int, Path(ge=1, title="Item ID", description="The unique item identifier")],
-
-    # Query params
-    include_deleted: bool = False,
-    sort: SortOrder = SortOrder.asc,
-    tags: list[str] = Query(default=[], description="Filter by tags"),
-
-    # Headers (hyphen auto-converted to underscore)
-    x_api_version: Annotated[str | None, Header()] = None,
-    accept_language: Annotated[str | None, Header()] = None,
-
-    # Cookies
-    session_token: Annotated[str | None, Cookie()] = None,
-):
-    return {
-        "item_id": item_id,
-        "include_deleted": include_deleted,
-        "sort": sort,
-        "tags": tags,
-        "api_version": x_api_version,
-        "lang": accept_language,
-        "session": session_token is not None,
-    }
-
-# Repeated query param: /items?tags=python&tags=fastapi
-# → tags = ["python", "fastapi"]`,
-          notes: [
-            "list[str] query params accept repeated ?key=a&key=b syntax",
-            "Enum query params show allowed values in /docs automatically",
-            "Header() converts X-API-Version → x_api_version (underscore substitution)",
-            "Path() with title/description enriches the OpenAPI spec",
-          ]
-        },
-        {
-          title: "File Uploads",
-          lang: "python",
-          filename: "file_upload.py",
-          desc: "Handle file uploads — single file, multiple files, and file + form fields together.",
-          code: `from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from typing import Annotated
-import aiofiles
-import uuid
-
-app = FastAPI()
-
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-
-@app.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    description: str = Form(""),
-):
-    # Validate file type
-    allowed_types = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
-    if file.content_type not in allowed_types:
-        raise HTTPException(400, f"File type {file.content_type} not allowed")
-
-    # Read and validate size
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(413, "File too large (max 10 MB)")
-
-    # Save to disk (in production: upload to S3/GCS instead)
-    filename = f"{uuid.uuid4()}-{file.filename}"
-    async with aiofiles.open(f"/uploads/{filename}", "wb") as f:
-        await f.write(content)
-
-    return {
-        "filename": filename,
-        "original_name": file.filename,
-        "content_type": file.content_type,
-        "size_bytes": len(content),
-        "description": description,
-    }
-
-@app.post("/upload-multiple")
-async def upload_multiple(files: list[UploadFile] = File(...)):
-    results = []
-    for file in files:
-        content = await file.read()
-        results.append({
-            "filename": file.filename,
-            "size": len(content),
-            "type": file.content_type,
-        })
-    return results`,
-          notes: [
-            "UploadFile gives you async read() and the filename/content_type",
-            "File(...) makes it required; File(None) makes it optional",
-            "Always validate file type AND size before processing",
-            "In production: stream to S3/GCS with aiobotocore or google-cloud-storage",
-            "Form() and File() cannot be used with a JSON body — they use multipart/form-data",
-          ]
-        },
-        {
-          title: "Streaming Responses (SSE for LLMs)",
-          lang: "python",
-          filename: "streaming.py",
-          desc: "Stream LLM tokens to the client using Server-Sent Events — the pattern used by ChatGPT.",
-          code: `from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-import asyncio
-import json
-
-app = FastAPI()
-
-async def token_stream(prompt: str):
-    """Generator that yields SSE-formatted chunks."""
-    # In real code: stream from OpenAI / vLLM / HuggingFace
-    words = f"This is a streamed response to: {prompt}".split()
-    for word in words:
-        # SSE format: "data: <payload>\n\n"
-        chunk = {"token": word + " ", "done": False}
-        yield f"data: {json.dumps(chunk)}\n\n"
-        await asyncio.sleep(0.05)   # simulate token generation delay
-
-    # Final message signals completion
-    yield f"data: {json.dumps({'token': '', 'done': True})}\n\n"
-
-from pydantic import BaseModel
-
-class InferenceRequest(BaseModel):
-    prompt: str
-    model: str = "gpt-4o-mini"
-
-@app.post("/inference/stream")
-async def stream_inference(body: InferenceRequest):
-    return StreamingResponse(
-        token_stream(body.prompt),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",   # disable nginx buffering
-        },
-    )
-
-# OpenAI-compatible streaming with the openai library
-@app.post("/openai/stream")
-async def openai_stream(body: InferenceRequest):
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI()
-
-    async def generate():
-        stream = await client.chat.completions.create(
-            model=body.model,
-            messages=[{"role": "user", "content": body.prompt}],
-            stream=True,
-        )
-        async for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                yield f"data: {json.dumps({'token': delta})}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")`,
-          notes: [
-            "StreamingResponse accepts any async generator that yields bytes or strings",
-            "SSE format is 'data: <content>\\n\\n' — double newline is mandatory",
-            "X-Accel-Buffering: no prevents Nginx from buffering the stream",
-            "Clients read SSE with EventSource API in the browser or httpx in Python",
-          ]
-        },
-      ]
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      id: "pydantic",
+      id: "schemas-validation",
       icon: "✅",
-      title: "Pydantic Models",
+      title: "Pydantic Schemas & Validation",
       items: [
         {
-          title: "CRUD Schema Pattern",
+          title: "Request & Response Schemas",
           lang: "python",
-          filename: "app/schemas/user.py",
-          desc: "Separate schemas for create, update, DB, and public response — the professional pattern.",
+          filename: "schemas.py",
+          desc: "All Pydantic models for the Sentiment API — request validation, response shapes, and auth.",
           code: `from pydantic import BaseModel, Field, EmailStr, field_validator
 from datetime import datetime
-from enum import Enum
-from typing import Self
 
-class UserRole(str, Enum):
-    admin = "admin"
-    user = "user"
-    viewer = "viewer"
+# ═══════════════════════════════════════════════════════════════════════
+# PREDICTION
+# ═══════════════════════════════════════════════════════════════════════
+class PredictRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=1,
+        max_length=5000,
+        description="Text to analyze for sentiment",
+        examples=["This product is absolutely wonderful!"],
+    )
+    model_version: str = "v1"
 
-# ── Create (POST body) ────────────────────────────────────────────────────
+    @field_validator("text", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        return v.strip()
+
+class PredictResponse(BaseModel):
+    sentiment: str          # "positive" or "negative"
+    score: float = Field(ge=0.0, le=1.0)
+    cached: bool = False
+
+class BatchPredictRequest(BaseModel):
+    texts: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="List of texts (max 100 per batch)",
+    )
+
+class BatchPredictResponse(BaseModel):
+    results: list[PredictResponse]
+    count: int
+
+# ═══════════════════════════════════════════════════════════════════════
+# AUTH
+# ═══════════════════════════════════════════════════════════════════════
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_]+$")
-    email: EmailStr                          # validates email format
+    email: EmailStr
     password: str = Field(min_length=8)
-    role: UserRole = UserRole.user
 
     @field_validator("password")
     @classmethod
-    def password_strength(cls, v: str) -> str:
+    def strong_password(cls, v: str) -> str:
         if not any(c.isupper() for c in v):
-            raise ValueError("Must contain uppercase letter")
+            raise ValueError("Must contain an uppercase letter")
         if not any(c.isdigit() for c in v):
             raise ValueError("Must contain a digit")
         return v
 
-# ── Update (PATCH body — all optional) ────────────────────────────────────
-class UserUpdate(BaseModel):
-    username: str | None = Field(None, min_length=3, max_length=50)
-    email: EmailStr | None = None
-
-# ── DB row representation (from ORM) ─────────────────────────────────────
-class UserInDB(BaseModel):
+class UserResponse(BaseModel):
     id: int
-    username: str
     email: str
-    hashed_password: str
-    role: UserRole
-    is_active: bool
+    role: str
     created_at: datetime
-    updated_at: datetime
 
     model_config = {"from_attributes": True}
 
-# ── Public response (never expose password) ───────────────────────────────
-class UserPublic(BaseModel):
-    id: int
-    username: str
-    email: str
-    role: UserRole
-    is_active: bool
-    created_at: datetime
-
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "example": {
-                "id": 1,
-                "username": "alice",
-                "email": "alice@example.com",
-                "role": "user",
-                "is_active": True,
-                "created_at": "2024-01-01T00:00:00Z",
-            }
-        }
-    }
-
-# ── Paginated list response ────────────────────────────────────────────────
-class PaginatedUsers(BaseModel):
-    items: list[UserPublic]
-    total: int
-    skip: int
-    limit: int`,
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int`,
           notes: [
-            "EmailStr from pydantic validates RFC-compliant email addresses",
-            "Never put hashed_password in UserPublic — response_model filters automatically",
-            "json_schema_extra.example appears in /docs as a sample request/response",
-            "PaginatedUsers wraps lists with metadata — consistent pagination across all list endpoints",
+            "PredictRequest validates text is 1-5000 chars — prevents empty input and abuse",
+            "strip_whitespace with mode='before' normalizes input before Pydantic validation",
+            "Field(ge=0.0, le=1.0) on score ensures the confidence score is always 0-1",
+            "UserResponse uses from_attributes=True to accept SQLAlchemy model objects directly",
+            "Never include password or hashed_password in UserResponse — Pydantic excludes them automatically",
           ]
         },
         {
-          title: "Advanced Validators",
+          title: "Model Validators (Cross-Field)",
           lang: "python",
           filename: "validators.py",
-          desc: "Field validators, model validators, and computed fields for complex validation logic.",
-          code: `from pydantic import BaseModel, field_validator, model_validator, computed_field, Field
+          desc: "Validators that check relationships between fields — useful for time ranges, paired params.",
+          code: `from pydantic import BaseModel, Field, model_validator, computed_field
 from datetime import date
 from typing import Self
 
-class DateRange(BaseModel):
+class DateRangeQuery(BaseModel):
+    """Used for /predictions/history?start=2024-01-01&end=2024-03-01"""
     start_date: date
     end_date: date
-    max_days: int = Field(default=365, exclude=True)  # internal, not serialized
+    max_days: int = Field(default=90, exclude=True)  # internal limit
 
     @model_validator(mode="after")
     def check_date_range(self) -> Self:
@@ -592,50 +287,44 @@ class DateRange(BaseModel):
     def duration_days(self) -> int:
         return (self.end_date - self.start_date).days
 
-class NormalizedRequest(BaseModel):
-    name: str
-    email: str
-    phone: str | None = None
+class PredictWithOptions(BaseModel):
+    """Extended prediction request with optional thresholds."""
+    text: str = Field(min_length=1)
+    min_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    return_all_labels: bool = False
 
-    @field_validator("name", mode="before")
-    @classmethod
-    def strip_name(cls, v: str) -> str:
-        return v.strip().title()   # "  alice smith " → "Alice Smith"
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def normalize_email(cls, v: str) -> str:
-        return v.strip().lower()
-
-    @field_validator("phone", mode="before")
-    @classmethod
-    def clean_phone(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        # Strip non-digits
-        digits = "".join(c for c in v if c.isdigit())
-        if len(digits) not in (10, 11):
-            raise ValueError("Phone must be 10 or 11 digits")
-        return digits`,
+    @model_validator(mode="after")
+    def validate_options(self) -> Self:
+        if self.return_all_labels and self.min_confidence > 0:
+            raise ValueError(
+                "Cannot filter by min_confidence when returning all labels"
+            )
+        return self`,
           notes: [
-            "mode='before' runs before type coercion — ideal for normalization (strip, lower)",
-            "mode='after' runs after all field validation — use for cross-field checks",
-            "exclude=True on a Field means it's used internally but not included in model_dump()",
-            "@computed_field adds a read-only derived property that IS included in model_dump()",
+            "model_validator(mode='after') runs after all field validation — ideal for cross-field checks",
+            "exclude=True on max_days keeps it out of model_dump() — internal config, not serialized",
+            "@computed_field adds a derived property that IS included in JSON output",
+            "DateRangeQuery would be used as a query dependency for the predictions history endpoint",
           ]
         },
         {
-          title: "Generic Responses and Pagination",
+          title: "Generic API Response Wrapper",
           lang: "python",
-          filename: "generic_responses.py",
-          desc: "Reusable generic response wrappers using Python generics.",
+          filename: "response_wrapper.py",
+          desc: "Consistent response envelope for all endpoints — makes frontend integration predictable.",
           code: `from pydantic import BaseModel
 from typing import TypeVar, Generic
 
 T = TypeVar("T")
 
+class ApiResponse(BaseModel, Generic[T]):
+    """Standard envelope for all API responses."""
+    data: T
+    message: str = "success"
+    request_id: str | None = None
+
 class PagedResponse(BaseModel, Generic[T]):
-    """Generic paginated response wrapper."""
+    """Paginated response for list endpoints."""
     items: list[T]
     total: int
     page: int
@@ -652,31 +341,21 @@ class PagedResponse(BaseModel, Generic[T]):
             pages=(total + size - 1) // size,
         )
 
-class ApiResponse(BaseModel, Generic[T]):
-    """Standard envelope for all responses."""
-    data: T
-    message: str = "success"
-    request_id: str | None = None
-
-# Usage in routes
-from fastapi import FastAPI
-app = FastAPI()
-
-@app.get("/users", response_model=PagedResponse[UserPublic])
-async def list_users(page: int = 1, size: int = 20, db: AsyncSession = Depends(get_db)):
-    offset = (page - 1) * size
-    users, total = await get_users_paginated(db, offset=offset, limit=size)
-    return PagedResponse.create(items=users, total=total, page=page, size=size)
-
-@app.post("/users", response_model=ApiResponse[UserPublic])
-async def create_user(body: UserCreate, db: AsyncSession = Depends(get_db)):
-    user = await create_user_in_db(db, body)
-    return ApiResponse(data=user, message="User created successfully")`,
+# Usage in routes:
+# @router.get("/predictions/history", response_model=PagedResponse[PredictResponse])
+# async def history(page: int = 1, size: int = 20):
+#     predictions, total = await get_predictions(page, size)
+#     return PagedResponse.create(items=predictions, total=total, page=page, size=size)
+#
+# @router.post("/predict", response_model=ApiResponse[PredictResponse])
+# async def predict(body: PredictRequest):
+#     result = model.predict(body.text)
+#     return ApiResponse(data=result)`,
           notes: [
-            "Generic[T] with TypeVar makes the wrapper reusable for any response type",
-            "response_model=PagedResponse[UserPublic] — FastAPI supports generic response models",
-            "Consistent response envelopes make frontend integration predictable",
-            "pages = ceil(total / size) without importing math library",
+            "Generic[T] makes the wrapper reusable — PagedResponse[PredictResponse], PagedResponse[UserResponse]",
+            "response_model= in the route definition generates correct OpenAPI schema",
+            "Consistent envelopes let frontend code parse every response the same way",
+            "pages = ceil(total / size) computed without importing math",
           ]
         },
       ]
@@ -686,49 +365,33 @@ async def create_user(body: UserCreate, db: AsyncSession = Depends(get_db)):
     {
       id: "dependency-injection",
       icon: "🔗",
-      title: "Dependency Injection",
+      title: "Dependency Injection & Wiring",
       items: [
         {
-          title: "Database Session Dependency",
+          title: "All Dependencies (deps.py)",
           lang: "python",
-          filename: "app/database.py",
-          desc: "Async SQLAlchemy setup with per-request session and automatic commit/rollback.",
-          code: `from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    create_async_engine,
-    async_sessionmaker,
+          filename: "deps.py",
+          desc: "The DI hub — every shared resource injected into routes via Depends().",
+          code: `from typing import Annotated, AsyncGenerator
+from fastapi import Depends, Request
+from sqlalchemy.ext.asyncio import (
+    AsyncSession, create_async_engine, async_sessionmaker,
 )
-from sqlalchemy.orm import DeclarativeBase
-import os
 
-DATABASE_URL = os.environ["DATABASE_URL"]
-# e.g. "postgresql+asyncpg://user:password@localhost:5432/mydb"
+from config import settings
 
+# ═══════════════════════════════════════════════════════════════════════
+# DATABASE
+# ═══════════════════════════════════════════════════════════════════════
 engine = create_async_engine(
-    DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,
-    pool_pre_ping=True,   # verify connections before using from pool
-    echo=False,           # set True to log all SQL (dev only)
+    settings.database_url,
+    pool_pre_ping=True,    # verify connections before use
+    echo=False,            # True to log all SQL (dev only)
 )
-
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    expire_on_commit=False,  # don't expire objects after commit
-    class_=AsyncSession,
-)
-
-class Base(DeclarativeBase):
-    pass
-
-# ── Dependency ────────────────────────────────────────────────────────────
-from typing import AsyncGenerator
-from fastapi import Depends
-from typing import Annotated
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
+    async with SessionLocal() as session:
         try:
             yield session
             await session.commit()
@@ -736,149 +399,157 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
 
-DB = Annotated[AsyncSession, Depends(get_db)]`,
+# ═══════════════════════════════════════════════════════════════════════
+# ML MODEL
+# ═══════════════════════════════════════════════════════════════════════
+class SentimentModel:
+    """Loaded once in lifespan, injected per-request via Depends."""
+    def __init__(self, pipeline):
+        self._pipe = pipeline
+
+    def predict(self, text: str) -> dict:
+        result = self._pipe(text)[0]
+        return {"label": result["label"].lower(), "score": round(result["score"], 4)}
+
+    def predict_batch(self, texts: list[str]) -> list[dict]:
+        results = self._pipe(texts)
+        return [
+            {"label": r["label"].lower(), "score": round(r["score"], 4)}
+            for r in results
+        ]
+
+def get_model(request: Request) -> SentimentModel:
+    return request.app.state.model
+
+# ═══════════════════════════════════════════════════════════════════════
+# REDIS
+# ═══════════════════════════════════════════════════════════════════════
+def get_redis(request: Request):
+    return request.app.state.redis
+
+# ═══════════════════════════════════════════════════════════════════════
+# TYPE ALIASES — clean route signatures
+# ═══════════════════════════════════════════════════════════════════════
+DB    = Annotated[AsyncSession, Depends(get_db)]
+Model = Annotated[SentimentModel, Depends(get_model)]
+Redis = Annotated[object, Depends(get_redis)]`,
           notes: [
-            "pool_pre_ping=True prevents 'connection closed' errors by testing connections before use",
-            "expire_on_commit=False: after commit, attributes stay accessible without re-querying",
-            "Commit is automatic in get_db — routes don't need to call commit()",
-            "Rollback on any exception ensures no partial writes leak to the database",
+            "get_db: auto-commit on success, rollback on exception — routes don't call commit()",
+            "get_model: returns model from app.state (loaded once in lifespan, not per-request)",
+            "pool_pre_ping=True prevents 'connection closed' errors from idle connections",
+            "Type aliases (DB, Model, Redis) keep route signatures clean: def predict(db: DB, model: Model)",
           ]
         },
         {
-          title: "Auth Dependency Chain",
+          title: "Lifespan (Startup/Shutdown)",
           lang: "python",
-          filename: "app/deps.py",
-          desc: "Layered authentication dependencies — token → user ID → user → role checks.",
-          code: `from fastapi import Depends, HTTPException, status, Header
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from typing import Annotated
-from app.config import get_settings
-from app.schemas.auth import TokenData
+          filename: "main.py",
+          desc: "The lifespan context manager — loads the ML model, connects Redis, sets up httpx.",
+          code: `from fastapi import FastAPI
+from contextlib import asynccontextmanager
+import logging
+import redis.asyncio as aioredis
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+from config import settings
+from deps import SentimentModel, engine
+from routers import predict, admin, auth, health
+from middleware import RequestContextMiddleware
 
-# ── Layer 1: Extract and verify JWT ──────────────────────────────────────
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    settings = Depends(get_settings),
-) -> TokenData:
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id = int(payload["sub"])
-        role = payload.get("role", "user")
-        return TokenData(user_id=user_id, role=role)
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+logger = logging.getLogger(__name__)
 
-# ── Layer 2: Role checks ──────────────────────────────────────────────────
-async def require_admin(user: TokenData = Depends(get_current_user)) -> TokenData:
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──────────────────────────────────────────────────────
+    logger.info("Loading ML model: %s", settings.model_name)
+    from transformers import pipeline
+    pipe = pipeline("sentiment-analysis", model=settings.model_name)
+    app.state.model = SentimentModel(pipe)
+    logger.info("Model loaded")
 
-async def require_active(user: TokenData = Depends(get_current_user)) -> TokenData:
-    # Could check DB for is_active flag
-    return user
+    # Redis connection
+    app.state.redis = aioredis.from_url(
+        settings.redis_url, decode_responses=True,
+    )
 
-# ── Layer 3: API Key auth (alternative to JWT) ────────────────────────────
-async def api_key_auth(
-    x_api_key: Annotated[str | None, Header()] = None,
-    db: AsyncSession = Depends(get_db),
-) -> TokenData:
-    if not x_api_key:
-        raise HTTPException(status_code=401, detail="API key required")
-    # Look up key in DB
-    api_key_record = await get_api_key(db, x_api_key)
-    if not api_key_record or not api_key_record.is_active:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return TokenData(user_id=api_key_record.user_id, role=api_key_record.role)
+    yield
 
-# ── Type aliases ──────────────────────────────────────────────────────────
-CurrentUser = Annotated[TokenData, Depends(get_current_user)]
-AdminUser = Annotated[TokenData, Depends(require_admin)]`,
+    # ── Shutdown ─────────────────────────────────────────────────────
+    await app.state.redis.close()
+    await engine.dispose()
+    logger.info("Shutdown complete")
+
+app = FastAPI(
+    title=settings.app_name,
+    lifespan=lifespan,
+    docs_url="/docs" if settings.env != "production" else None,
+)
+
+# Middleware
+app.add_middleware(RequestContextMiddleware)
+
+# Routers
+app.include_router(auth.router)
+app.include_router(predict.router)
+app.include_router(admin.router)
+app.include_router(health.router)`,
           notes: [
-            "Each layer has a single responsibility — easy to test each in isolation",
-            "Type aliases (CurrentUser, AdminUser) keep route signatures readable",
-            "get_settings is also a dependency — settings can be overridden in tests",
-            "Dependency caching: get_current_user is called once per request even if multiple routes use it",
+            "ML model loads ONCE at startup — not per-request (would be ~2s per call vs ~50ms)",
+            "app.state stores shared resources accessible from any route via request.app.state",
+            "yield separates startup from shutdown — code after yield runs on SIGTERM",
+            "docs_url=None in production hides Swagger UI (security best practice)",
           ]
         },
         {
-          title: "Service Layer Pattern",
+          title: "Prediction Router with Caching",
           lang: "python",
-          filename: "app/services/user_service.py",
-          desc: "Business logic separated from HTTP — testable without FastAPI.",
-          code: `from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
-from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException
-from app.models import User
-from app.schemas.user import UserCreate, UserUpdate
-from app.auth import hash_password
+          filename: "routers/predict.py",
+          desc: "The core prediction endpoint — validates input, checks cache, runs model, stores result.",
+          code: `import json
+from fastapi import APIRouter, BackgroundTasks
+from deps import Model, Redis, DB
+from schemas import PredictRequest, PredictResponse
 
-class UserService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+router = APIRouter(tags=["predictions"])
 
-    async def create_user(self, data: UserCreate) -> User:
-        user = User(
-            username=data.username,
-            email=data.email,
-            hashed_password=hash_password(data.password),
-            role=data.role,
-        )
-        self.db.add(user)
-        try:
-            await self.db.flush()  # write to DB, check constraints
-        except IntegrityError:
-            raise HTTPException(409, "Username or email already exists")
-        return user
+async def log_prediction(text: str, result: dict):
+    """Background task — runs after response is returned."""
+    import logging
+    logging.getLogger("predictions").info(
+        "prediction", extra={"text": text[:100], **result},
+    )
 
-    async def get_user(self, user_id: int) -> User | None:
-        return await self.db.get(User, user_id)
+@router.post("/predict", response_model=PredictResponse)
+async def predict(
+    body: PredictRequest,
+    model: Model,
+    redis: Redis,
+    bg: BackgroundTasks,
+):
+    # ── Cache check ──────────────────────────────────────────────
+    cache_key = f"predict:{body.text[:80]}"
+    cached = await redis.get(cache_key)
+    if cached:
+        data = json.loads(cached)
+        data["cached"] = True
+        return data
 
-    async def list_users(
-        self,
-        skip: int = 0,
-        limit: int = 20,
-        search: str | None = None,
-    ) -> tuple[list[User], int]:
-        query = select(User)
-        if search:
-            query = query.where(
-                or_(
-                    User.username.ilike(f"%{search}%"),
-                    User.email.ilike(f"%{search}%"),
-                )
-            )
-        # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total = (await self.db.execute(count_query)).scalar_one()
-        # Get page
-        users = (await self.db.execute(
-            query.offset(skip).limit(limit).order_by(User.created_at.desc())
-        )).scalars().all()
-        return list(users), total
+    # ── Model inference ──────────────────────────────────────────
+    result = model.predict(body.text)
+    response = {
+        "sentiment": result["label"],
+        "score": result["score"],
+        "cached": False,
+    }
 
-    async def update_user(self, user_id: int, data: UserUpdate) -> User:
-        user = await self.get_user(user_id)
-        if not user:
-            raise HTTPException(404, "User not found")
-        update_data = data.model_dump(exclude_unset=True)  # only changed fields
-        for field, value in update_data.items():
-            setattr(user, field, value)
-        await self.db.flush()
-        return user`,
+    # ── Cache result + background log ────────────────────────────
+    await redis.setex(cache_key, 3600, json.dumps(response))
+    bg.add_task(log_prediction, body.text, response)
+    return response`,
           notes: [
-            "Service has no FastAPI imports except HTTPException — pure business logic",
-            "flush() writes to DB within the transaction without committing — lets you catch IntegrityError",
-            "model_dump(exclude_unset=True) — only update fields that were actually provided in PATCH",
-            "ilike() is case-insensitive LIKE — works in PostgreSQL",
+            "Cache key uses first 80 chars of text — prevents extremely long Redis keys",
+            "setex: set with expiry (3600s = 1 hour) — cache doesn't grow unbounded",
+            "Background task logs after response — doesn't add latency to the prediction",
+            "This version has no auth — Lesson 7 adds API key and JWT protection",
           ]
         },
       ]
@@ -886,15 +557,15 @@ class UserService:
 
     // ═══════════════════════════════════════════════════════════════════════
     {
-      id: "middleware-security",
+      id: "middleware-logging",
       icon: "🛡️",
-      title: "Middleware & Security",
+      title: "Middleware, CORS & Logging",
       items: [
         {
-          title: "Request Logging Middleware",
+          title: "Request Context Middleware",
           lang: "python",
-          filename: "app/middleware.py",
-          desc: "Middleware that adds request IDs, measures response time, and logs structured JSON.",
+          filename: "middleware.py",
+          desc: "Adds request IDs, measures response time, and attaches security headers to every response.",
           code: `import time
 import uuid
 import logging
@@ -905,6 +576,7 @@ logger = logging.getLogger("api.access")
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
+        # ── Request ID (accept from upstream proxy or generate) ────
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
         request.state.request_id = request_id
         start = time.perf_counter()
@@ -914,576 +586,439 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         except Exception:
             logger.error(
                 "unhandled_exception",
-                extra={
-                    "request_id": request_id,
-                    "method": request.method,
-                    "path": request.url.path,
-                },
+                extra={"request_id": request_id, "path": request.url.path},
                 exc_info=True,
             )
             raise
 
+        # ── Response headers ──────────────────────────────────────
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
         response.headers["X-Request-ID"] = request_id
-        response.headers["X-Response-Time-Ms"] = str(duration_ms)
+        response.headers["X-Process-Time"] = str(duration_ms)
 
+        # ── Security headers ──────────────────────────────────────
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+
+        # ── Structured access log ─────────────────────────────────
         logger.info(
             "request",
             extra={
                 "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
-                "query": str(request.query_params),
                 "status": response.status_code,
                 "duration_ms": duration_ms,
-                "user_agent": request.headers.get("user-agent"),
                 "ip": request.client.host if request.client else None,
             }
         )
         return response`,
           notes: [
-            "Accept X-Request-ID from upstream proxies so trace IDs flow through the system",
-            "Log at the middleware level for consistent coverage — routes don't need to log individually",
-            "exc_info=True in the error log includes the full traceback",
-            "duration_ms in every log line enables latency monitoring in log aggregation tools",
+            "X-Request-ID flows through from upstream proxies — enables distributed tracing",
+            "perf_counter() is monotonic and high-resolution — better than time.time() for durations",
+            "Security headers prevent clickjacking (DENY), MIME sniffing (nosniff), and force HTTPS (HSTS)",
+            "Structured access log: every field is queryable in log aggregation (Loki, CloudWatch, etc.)",
           ]
         },
         {
-          title: "Rate Limiting with Redis",
+          title: "Structured JSON Logging",
           lang: "python",
-          filename: "rate_limiter.py",
-          desc: "Sliding window rate limiter using Redis — production-grade, works across multiple workers.",
-          code: `import time
-import redis.asyncio as redis
-from fastapi import Request, HTTPException
-
-class RateLimiter:
-    def __init__(self, redis_url: str):
-        self.redis = redis.from_url(redis_url, decode_responses=True)
-
-    async def check_rate_limit(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int,
-    ) -> tuple[bool, int, int]:
-        """
-        Sliding window rate limiter using Redis sorted sets.
-        Returns: (allowed, remaining, reset_at_timestamp)
-        """
-        now = time.time()
-        window_start = now - window_seconds
-        pipe_key = f"ratelimit:{key}"
-
-        async with self.redis.pipeline() as pipe:
-            # Remove entries outside the window
-            await pipe.zremrangebyscore(pipe_key, 0, window_start)
-            # Count current entries in window
-            await pipe.zcard(pipe_key)
-            # Add current request
-            await pipe.zadd(pipe_key, {str(now): now})
-            # Set expiry
-            await pipe.expire(pipe_key, window_seconds * 2)
-            _, count, *_ = await pipe.execute()
-
-        remaining = max(0, limit - count - 1)
-        allowed = count < limit
-        reset_at = int(now + window_seconds)
-        return allowed, remaining, reset_at
-
-# Dependency factory
-def rate_limit(limit: int, window_seconds: int = 60, key_func=None):
-    async def check(request: Request):
-        limiter: RateLimiter = request.app.state.rate_limiter
-        # Default key: IP address
-        key = key_func(request) if key_func else (
-            request.headers.get("X-Forwarded-For", request.client.host)
-        )
-        allowed, remaining, reset_at = await limiter.check_rate_limit(
-            key, limit, window_seconds
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded",
-                headers={
-                    "X-RateLimit-Limit": str(limit),
-                    "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": str(reset_at),
-                    "Retry-After": str(reset_at - int(time.time())),
-                }
-            )
-        return {"remaining": remaining}
-    return check
-
-# Usage
-from fastapi import FastAPI, Depends
-app = FastAPI()
-
-@app.post("/inference", dependencies=[Depends(rate_limit(10, window_seconds=60))])
-async def inference(body: dict):
-    return {"result": "..."}`,
-          notes: [
-            "Sliding window with sorted sets: entries are timestamps, ZREMRANGEBYSCORE removes expired ones",
-            "Pipeline (atomic multi-command) avoids race conditions between check and increment",
-            "X-RateLimit-* headers are the standard way to communicate limits to clients",
-            "In Kubernetes with multiple pods, Redis ensures rate limits are shared across all pods",
-          ]
-        },
-        {
-          title: "CORS and Security Headers",
-          lang: "python",
-          filename: "security_headers.py",
-          desc: "Production CORS configuration and security headers middleware.",
-          code: `from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
-app = FastAPI()
-
-# ── Security headers middleware ────────────────────────────────────────────
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
-        response = await call_next(request)
-        response.headers.update({
-            "X-Content-Type-Options": "nosniff",
-            "X-Frame-Options": "DENY",
-            "X-XSS-Protection": "1; mode=block",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-        })
-        return response
-
-# ── CORS (must be added BEFORE other middleware) ───────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://app.mycompany.com",
-        "https://admin.mycompany.com",
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
-    expose_headers=["X-Request-ID", "X-Response-Time-Ms", "X-RateLimit-Remaining"],
-    max_age=600,
-)
-
-app.add_middleware(SecurityHeadersMiddleware)`,
-          notes: [
-            "Add middleware in reverse execution order — last added runs first (LIFO)",
-            "CORS must run before any middleware that might return 401/403 — preflight needs to pass first",
-            "HSTS header (Strict-Transport-Security) tells browsers to always use HTTPS",
-            "Permissions-Policy restricts browser APIs — camera=() means 'no access'",
-          ]
-        },
-      ]
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      id: "background-tasks",
-      icon: "⚙️",
-      title: "Background Tasks & Async Patterns",
-      items: [
-        {
-          title: "BackgroundTasks Pattern",
-          lang: "python",
-          filename: "background.py",
-          desc: "Using FastAPI's BackgroundTasks for post-response work like notifications and analytics.",
-          code: `from fastapi import FastAPI, BackgroundTasks, Depends
-import logging
-import asyncio
-
-app = FastAPI()
-logger = logging.getLogger(__name__)
-
-# ── Background task functions ─────────────────────────────────────────────
-async def send_welcome_email(email: str, username: str):
-    """Runs after HTTP response is returned to client."""
-    try:
-        # In prod: use an email service like SendGrid, Resend, SES
-        await asyncio.sleep(0.5)   # simulate network call
-        logger.info("welcome_email_sent", extra={"email": email})
-    except Exception as e:
-        logger.error("welcome_email_failed", extra={"email": email, "error": str(e)})
-
-async def invalidate_user_cache(user_id: int):
-    try:
-        import redis.asyncio as redis
-        r = redis.from_url("redis://localhost:6379")
-        await r.delete(f"user:{user_id}", f"user:profile:{user_id}")
-        logger.info("cache_invalidated", extra={"user_id": user_id})
-    except Exception as e:
-        logger.warning("cache_invalidation_failed", extra={"error": str(e)})
-
-async def log_audit_event(action: str, user_id: int, resource: str):
-    """Write audit log to a separate store."""
-    await asyncio.sleep(0)  # yield to event loop
-    logger.info("audit", extra={"action": action, "user_id": user_id, "resource": resource})
-
-# ── Routes using BackgroundTasks ──────────────────────────────────────────
-@app.post("/users", status_code=201)
-async def create_user(
-    body: UserCreate,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-):
-    user = await create_user_in_db(db, body)
-
-    background_tasks.add_task(send_welcome_email, user.email, user.username)
-    background_tasks.add_task(log_audit_event, "user.created", user.id, f"/users/{user.id}")
-
-    return user   # returned to client immediately
-
-@app.put("/users/{user_id}")
-async def update_user(
-    user_id: int,
-    body: UserUpdate,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
-):
-    user = await update_user_in_db(db, user_id, body)
-
-    background_tasks.add_task(invalidate_user_cache, user_id)
-    background_tasks.add_task(log_audit_event, "user.updated", current_user.user_id, f"/users/{user_id}")
-
-    return user`,
-          notes: [
-            "BackgroundTasks.add_task(func, *args, **kwargs) — runs after response is sent",
-            "Always catch exceptions in background tasks — failures are silent otherwise",
-            "BackgroundTasks is not persistent — tasks are lost if the server crashes mid-flight",
-            "For guaranteed delivery: use Celery + Redis/RabbitMQ or a proper job queue",
-          ]
-        },
-        {
-          title: "Celery Integration",
-          lang: "python",
-          filename: "celery_tasks.py",
-          desc: "Celery for reliable background jobs with retries, scheduling, and monitoring.",
-          code: `# pip install celery redis
-from celery import Celery
-import asyncio
-
-# ── Celery app setup ──────────────────────────────────────────────────────
-celery_app = Celery(
-    "worker",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/1",
-)
-
-celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    task_track_started=True,
-    task_acks_late=True,         # ack only after task completes (safer)
-    worker_prefetch_multiplier=1, # one task at a time per worker
-)
-
-# ── Task definitions ──────────────────────────────────────────────────────
-@celery_app.task(
-    name="process_document",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-)
-def process_document(self, document_id: int, user_id: int):
-    """Long-running document processing task."""
-    try:
-        # Run async code inside a sync Celery task
-        result = asyncio.run(_process_document_async(document_id))
-        return {"document_id": document_id, "status": "completed", "result": result}
-    except Exception as exc:
-        # Exponential backoff: 60s, 120s, 240s
-        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
-
-async def _process_document_async(document_id: int):
-    # Your actual async processing logic
-    return {"pages": 10, "words": 5000}
-
-# ── Enqueue from FastAPI routes ───────────────────────────────────────────
-from fastapi import FastAPI
-app = FastAPI()
-
-@app.post("/documents/{doc_id}/process")
-async def trigger_processing(doc_id: int, current_user: TokenData = Depends(get_current_user)):
-    task = process_document.delay(doc_id, current_user.user_id)
-    return {"task_id": task.id, "status": "queued"}
-
-@app.get("/tasks/{task_id}")
-async def get_task_status(task_id: str):
-    task = celery_app.AsyncResult(task_id)
-    return {
-        "task_id": task_id,
-        "status": task.status,      # PENDING, STARTED, SUCCESS, FAILURE, RETRY
-        "result": task.result if task.ready() else None,
-    }`,
-          notes: [
-            "task_acks_late=True: message stays in queue until task succeeds — prevents data loss on crash",
-            "max_retries + retry(countdown=...) implements exponential backoff automatically",
-            "AsyncResult lets you poll task status — expose this as an API endpoint for long-running jobs",
-            "Run workers: celery -A celery_tasks.celery_app worker --loglevel=info",
-            "Monitor with Flower: pip install flower && celery -A worker flower",
-          ]
-        },
-        {
-          title: "Concurrent I/O with asyncio.gather",
-          lang: "python",
-          filename: "concurrent_io.py",
-          desc: "Pattern for fetching multiple data sources concurrently in a single route.",
-          code: `import asyncio
-import httpx
-from fastapi import FastAPI
-
-app = FastAPI()
-
-async def get_user_profile(db, user_id: int):
-    return await db.get(User, user_id)
-
-async def get_user_posts(db, user_id: int):
-    result = await db.execute(select(Post).where(Post.user_id == user_id).limit(10))
-    return result.scalars().all()
-
-async def get_user_stats(redis_client, user_id: int):
-    data = await redis_client.hgetall(f"stats:user:{user_id}")
-    return data or {"views": 0, "likes": 0}
-
-async def get_external_reputation(http_client: httpx.AsyncClient, user_id: int):
-    try:
-        resp = await http_client.get(f"https://api.external.com/reputation/{user_id}")
-        return resp.json()
-    except Exception:
-        return None   # graceful degradation
-
-@app.get("/users/{user_id}/dashboard")
-async def user_dashboard(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    request: Request = None,
-):
-    redis = request.app.state.redis
-    http = request.app.state.http_client
-
-    # Fire all queries concurrently — total time ≈ max(individual times)
-    profile, posts, stats, reputation = await asyncio.gather(
-        get_user_profile(db, user_id),
-        get_user_posts(db, user_id),
-        get_user_stats(redis, user_id),
-        get_external_reputation(http, user_id),
-        return_exceptions=True,   # don't raise if one fails
-    )
-
-    return {
-        "profile": profile if not isinstance(profile, Exception) else None,
-        "posts": posts if not isinstance(posts, Exception) else [],
-        "stats": stats if not isinstance(stats, Exception) else {},
-        "reputation": reputation if not isinstance(reputation, Exception) else None,
-    }`,
-          notes: [
-            "asyncio.gather() runs all coroutines concurrently — total time = slowest query, not sum",
-            "return_exceptions=True: exceptions are returned as values instead of propagating",
-            "Check isinstance(result, Exception) to handle partial failures gracefully",
-            "For 4 queries each taking 100ms: sequential = 400ms, concurrent = ~100ms",
-          ]
-        },
-      ]
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-      id: "jwt-auth",
-      icon: "🔐",
-      title: "JWT Authentication",
-      items: [
-        {
-          title: "Complete Auth Router",
-          lang: "python",
-          filename: "app/routers/auth.py",
-          desc: "Login, refresh, logout, and change-password endpoints with JWT.",
-          code: `from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import get_db
-from app.auth import (
-    verify_password, create_access_token, create_refresh_token,
-    decode_token, hash_password,
-)
-from app.models import User, RefreshToken
-from app.schemas.auth import TokenResponse, RefreshRequest, ChangePasswordRequest
-from app.deps import get_current_user
+          filename: "logging_config.py",
+          desc: "JSON logs that are parseable by log aggregation tools — not human-readable text.",
+          code: `import logging
+import json
+import sys
 from datetime import datetime, timezone
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+class JSONFormatter(logging.Formatter):
+    """Outputs structured JSON — one line per log entry."""
+    def format(self, record: logging.LogRecord) -> str:
+        log_data = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        # Merge extra fields (request_id, path, duration_ms, etc.)
+        if hasattr(record, "request_id"):
+            log_data["request_id"] = record.request_id
+        if hasattr(record, "path"):
+            log_data["path"] = record.path
+        if hasattr(record, "status"):
+            log_data["status"] = record.status
+        if hasattr(record, "duration_ms"):
+            log_data["duration_ms"] = record.duration_ms
+        if hasattr(record, "ip"):
+            log_data["ip"] = record.ip
+        if hasattr(record, "method"):
+            log_data["method"] = record.method
+        # Include exception info if present
+        if record.exc_info and record.exc_info[0]:
+            log_data["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_data)
 
-@router.post("/login", response_model=TokenResponse)
-async def login(
-    form: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
-):
-    # Get user
-    result = await db.execute(select(User).where(User.username == form.username))
-    user = result.scalar_one_or_none()
-
-    if not user or not verify_password(form.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-        )
-
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account disabled")
-
-    # Create tokens
-    access_token = create_access_token(user.id, user.role)
-    refresh_token_str = create_refresh_token(user.id)
-
-    # Store refresh token in DB (for revocation)
-    rt = RefreshToken(user_id=user.id, token=refresh_token_str)
-    db.add(rt)
-
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token_str,
-        expires_in=30 * 60,
+def setup_logging():
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(JSONFormatter())
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[handler],
     )
+    # Suppress noisy libraries
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    token_data = decode_token(body.refresh_token, expected_type="refresh")
-
-    # Check token is in DB (not revoked)
-    result = await db.execute(
-        select(RefreshToken).where(
-            RefreshToken.token == body.refresh_token,
-            RefreshToken.revoked_at.is_(None),
-        )
-    )
-    stored_token = result.scalar_one_or_none()
-    if not stored_token:
-        raise HTTPException(status_code=401, detail="Refresh token revoked")
-
-    user = await db.get(User, token_data.user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="User not found or disabled")
-
-    # Rotate: revoke old, issue new
-    stored_token.revoked_at = datetime.now(timezone.utc)
-    new_access = create_access_token(user.id, user.role)
-    new_refresh = create_refresh_token(user.id)
-    db.add(RefreshToken(user_id=user.id, token=new_refresh))
-
-    return TokenResponse(access_token=new_access, refresh_token=new_refresh, expires_in=1800)
-
-@router.post("/logout", status_code=204)
-async def logout(
-    body: RefreshRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    # Revoke refresh token
-    result = await db.execute(
-        select(RefreshToken).where(
-            RefreshToken.token == body.refresh_token,
-            RefreshToken.user_id == current_user.user_id,
-        )
-    )
-    token = result.scalar_one_or_none()
-    if token:
-        token.revoked_at = datetime.now(timezone.utc)`,
+# Call at startup: setup_logging()
+# Output example:
+# {"timestamp":"2024-06-15T10:30:45Z","level":"INFO","logger":"api.access",
+#  "message":"request","request_id":"abc-123","method":"POST","path":"/predict",
+#  "status":200,"duration_ms":42.5,"ip":"10.0.0.1"}`,
           notes: [
-            "Store refresh tokens in DB to enable revocation (logout, compromised token)",
-            "Token rotation: on refresh, revoke old refresh token and issue a new one",
-            "Always verify both the JWT signature AND that the token is in the DB (not revoked)",
-            "Return 401 for invalid credentials — never reveal whether username or password was wrong",
+            "JSON logs: one field per key — grep by request_id, filter by status, aggregate duration_ms",
+            "Extra fields from middleware (request_id, duration_ms) are merged into the JSON",
+            "Suppress uvicorn.access and sqlalchemy.engine to avoid duplicate/noisy logs",
+            "In production with Kubernetes: logs go to stdout → collected by Fluentd/Promtail → Loki/CloudWatch",
           ]
         },
+        {
+          title: "CORS Configuration",
+          lang: "python",
+          filename: "cors_setup.py",
+          desc: "Production CORS — explicit origins, not wildcards. Protects against cross-site request abuse.",
+          code: `from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# ── CORS must be added BEFORE other middleware (LIFO order) ──────────
+app.add_middleware(
+    CORSMiddleware,
+    # NEVER use ["*"] in production — list exact origins
+    allow_origins=[
+        "https://dashboard.yourcompany.com",
+        "http://localhost:3000",           # dev frontend
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    expose_headers=[
+        "X-Request-ID",
+        "X-Process-Time",
+        "X-RateLimit-Remaining",
+    ],
+    max_age=600,     # browser caches preflight for 10 min
+)
+
+# WHY THIS MATTERS:
+# Without CORS headers, browsers block requests from dashboard.yourcompany.com
+# to api.yourcompany.com (different subdomain = different origin).
+#
+# allow_origins=["*"] is dangerous: any website can call your API
+# from the user's browser, using their cookies/auth.
+#
+# expose_headers: by default, browsers can only see Cache-Control,
+# Content-Language, Content-Type, Expires, Last-Modified, Pragma.
+# Any custom header needs to be explicitly exposed.`,
+          notes: [
+            "Middleware added last runs first (LIFO) — add CORS before auth middleware",
+            "allow_origins=['*'] with allow_credentials=True is a security vulnerability",
+            "expose_headers lets JavaScript read X-Request-ID from responses (hidden by default)",
+            "max_age=600: browser caches the preflight OPTIONS response for 10 minutes",
+          ]
+        },
+      ]
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      id: "auth-security",
+      icon: "🔐",
+      title: "JWT Authentication & API Keys",
+      items: [
         {
           title: "JWT Token Creation & Verification",
           lang: "python",
-          filename: "app/auth.py",
-          desc: "JWT encode/decode, password hashing, and token models.",
-          code: `# pip install python-jose[cryptography] passlib[bcrypt]
-from datetime import datetime, timedelta, timezone
+          filename: "auth.py",
+          desc: "JWT encode/decode and password hashing — the auth foundation for the Sentiment API.",
+          code: `from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import HTTPException, status
 from pydantic import BaseModel
-import os
 
-# ── Config ────────────────────────────────────────────────────────────────
-SECRET_KEY = os.environ["SECRET_KEY"]   # openssl rand -hex 32
-ALGORITHM = "HS256"
-ACCESS_TOKEN_MINUTES = 30
-REFRESH_TOKEN_DAYS = 7
+from config import settings
 
-# ── Password hashing ──────────────────────────────────────────────────────
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ── Password hashing (bcrypt: intentionally slow) ─────────────────────
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(plain: str) -> str:
-    return _pwd.hash(plain)
+    return pwd_context.hash(plain)
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd.verify(plain, hashed)
+    return pwd_context.verify(plain, hashed)
 
-# ── Token schemas ─────────────────────────────────────────────────────────
-class TokenData(BaseModel):
-    user_id: int
-    role: str = "user"
+# ── Token payload ─────────────────────────────────────────────────────
+class TokenPayload(BaseModel):
+    sub: str          # user ID as string
+    role: str         # "user" or "admin"
+    type: str         # "access" or "refresh"
 
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-# ── Token creation ────────────────────────────────────────────────────────
+# ── Token creation ────────────────────────────────────────────────────
 def create_access_token(user_id: int, role: str) -> str:
+    now = datetime.now(timezone.utc)
     return jwt.encode(
         {
             "sub": str(user_id),
             "role": role,
             "type": "access",
-            "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_MINUTES),
+            "iat": now,
+            "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
         },
-        SECRET_KEY,
-        algorithm=ALGORITHM,
+        settings.jwt_secret_key,
+        algorithm="HS256",
     )
 
 def create_refresh_token(user_id: int) -> str:
+    now = datetime.now(timezone.utc)
     return jwt.encode(
         {
             "sub": str(user_id),
             "type": "refresh",
-            "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS),
+            "iat": now,
+            "exp": now + timedelta(days=settings.refresh_token_expire_days),
         },
-        SECRET_KEY,
-        algorithm=ALGORITHM,
+        settings.jwt_secret_key,
+        algorithm="HS256",
     )
 
-# ── Token verification ────────────────────────────────────────────────────
-def decode_token(token: str, expected_type: str = "access") -> TokenData:
+# ── Token verification ────────────────────────────────────────────────
+def decode_token(token: str, expected_type: str = "access") -> TokenPayload:
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret_key,
+        algorithms=["HS256"],       # ALWAYS pin — prevents alg:none attack
+    )
+    if payload.get("type") != expected_type:
+        raise JWTError("Wrong token type")
+    return TokenPayload(**payload)`,
+          notes: [
+            "bcrypt is ~100ms per hash — makes brute-force attacks impractical",
+            "algorithms=['HS256'] must be pinned — accepting 'none' lets attackers forge tokens",
+            "'type' claim prevents access tokens from being used as refresh tokens (and vice versa)",
+            "Always use timezone.utc — naive datetimes cause subtle bugs with JWT expiry",
+          ]
+        },
+        {
+          title: "Auth Dependencies (JWT + API Key)",
+          lang: "python",
+          filename: "deps.py (auth section)",
+          desc: "Auth dependencies added to deps.py — JWT for users, API keys for services.",
+          code: `from typing import Annotated
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError
+
+from auth import decode_token, TokenPayload
+
+# ── JWT auth (for dashboard/browser users) ────────────────────────────
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+) -> TokenPayload:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return decode_token(token, expected_type="access")
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if payload.get("type") != expected_type:
-        raise HTTPException(status_code=401, detail=f"Expected {expected_type} token")
-    return TokenData(user_id=int(payload["sub"]), role=payload.get("role", "user"))`,
+
+async def require_admin(
+    user: TokenPayload = Depends(get_current_user),
+) -> TokenPayload:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+# ── API key auth (for service-to-service calls) ───────────────────────
+async def verify_api_key(request: Request) -> str:
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        raise HTTPException(status_code=401, detail="X-API-Key header required")
+
+    redis = request.app.state.redis
+    cached = await redis.get(f"apikey:{api_key}")
+    if cached:
+        return cached   # returns owner/client_id
+
+    # In production: fall back to DB lookup here
+    raise HTTPException(status_code=401, detail="Invalid API key")
+
+# ── Optional auth (public with optional personalization) ──────────────
+optional_oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+async def get_optional_user(
+    token: str | None = Depends(optional_oauth2),
+) -> TokenPayload | None:
+    if not token:
+        return None
+    try:
+        return decode_token(token)
+    except JWTError:
+        return None
+
+# ── Type aliases ──────────────────────────────────────────────────────
+CurrentUser  = Annotated[TokenPayload, Depends(get_current_user)]
+AdminUser    = Annotated[TokenPayload, Depends(require_admin)]
+OptionalUser = Annotated[TokenPayload | None, Depends(get_optional_user)]
+ApiKeyOwner  = Annotated[str, Depends(verify_api_key)]`,
           notes: [
-            "Generate SECRET_KEY with: openssl rand -hex 32 — never commit it to git",
-            "Include 'type' claim to prevent access tokens from being used as refresh tokens",
-            "algorithms=[ALGORITHM] in jwt.decode — always explicit, never accept any algorithm",
-            "Use timezone.utc for all datetime operations — naive datetimes cause subtle bugs",
+            "OAuth2PasswordBearer: tokenUrl tells Swagger UI where to POST credentials",
+            "API key auth: Redis cache first, then DB — instant revocation by deleting from Redis",
+            "Optional auth: auto_error=False returns None instead of 401 when no token present",
+            "Type aliases keep routes clean: def predict(owner: ApiKeyOwner, model: Model)",
+          ]
+        },
+        {
+          title: "Auth Router (Register/Login/Refresh)",
+          lang: "python",
+          filename: "routers/auth.py",
+          desc: "Complete auth flow — register, login (OAuth2 form), and token refresh with rotation.",
+          code: `from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
+
+from auth import (
+    hash_password, verify_password,
+    create_access_token, create_refresh_token, decode_token,
+)
+from deps import DB
+from schemas import UserCreate, UserResponse, TokenResponse
+from config import settings
+# Assume: User SQLAlchemy model with id, email, hashed_password, role
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+@router.post("/register", response_model=UserResponse, status_code=201)
+async def register(body: UserCreate, db: DB):
+    existing = await db.execute(
+        select(User).where(User.email == body.email)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    user = User(
+        email=body.email,
+        hashed_password=hash_password(body.password),
+        role="user",
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+@router.post("/login", response_model=TokenResponse)
+async def login(
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: DB = None,
+):
+    result = await db.execute(
+        select(User).where(User.email == form.username)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(form.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+    return TokenResponse(
+        access_token=create_access_token(user.id, user.role),
+        refresh_token=create_refresh_token(user.id),
+        expires_in=settings.access_token_expire_minutes * 60,
+    )
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(refresh_token: str, db: DB):
+    from jose import JWTError
+    try:
+        payload = decode_token(refresh_token, expected_type="refresh")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = await db.get(User, int(payload.sub))
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return TokenResponse(
+        access_token=create_access_token(user.id, user.role),
+        refresh_token=create_refresh_token(user.id),
+        expires_in=settings.access_token_expire_minutes * 60,
+    )`,
+          notes: [
+            "OAuth2PasswordRequestForm uses 'username' field — we map it to email",
+            "Same error for wrong email AND wrong password — prevents email enumeration",
+            "Refresh issues a NEW token pair — this is 'token rotation'",
+            "Production: store refresh tokens in DB/Redis and check revocation before issuing new tokens",
+          ]
+        },
+        {
+          title: "Protected Predict Route (API Key + JWT)",
+          lang: "python",
+          filename: "routers/predict.py (after Lesson 7)",
+          desc: "The predict router with both auth strategies — API key for services, JWT for users.",
+          code: `import json
+from fastapi import APIRouter, BackgroundTasks
+from deps import (
+    CurrentUser, OptionalUser, ApiKeyOwner,
+    Model, Redis, DB,
+)
+from schemas import PredictRequest, PredictResponse
+
+router = APIRouter(tags=["predictions"])
+
+# ── API key protected (service-to-service) ────────────────────────────
+@router.post("/predict", response_model=PredictResponse)
+async def predict(
+    body: PredictRequest,
+    owner: ApiKeyOwner,          # requires X-API-Key header
+    model: Model,
+    redis: Redis,
+    bg: BackgroundTasks,
+):
+    cache_key = f"predict:{owner}:{body.text[:80]}"
+    cached = await redis.get(cache_key)
+    if cached:
+        data = json.loads(cached)
+        data["cached"] = True
+        return data
+
+    result = model.predict(body.text)
+    response = {"sentiment": result["label"], "score": result["score"], "cached": False}
+
+    await redis.setex(cache_key, 3600, json.dumps(response))
+    bg.add_task(log_prediction, owner=owner, text=body.text, result=response)
+    return response
+
+# ── JWT protected (dashboard users) ──────────────────────────────────
+@router.get("/predictions/history")
+async def prediction_history(user: CurrentUser, db: DB):
+    return {"user_id": user.sub, "predictions": []}
+
+# ── Public with optional personalization ──────────────────────────────
+@router.get("/models")
+async def list_models(user: OptionalUser):
+    models = [{"name": "sentiment-v1", "version": "1.0"}]
+    if user:
+        models[0]["your_requests_today"] = 42
+    return {"models": models}`,
+          notes: [
+            "/predict: API key auth — the standard for programmatic access (like OpenAI, Stripe)",
+            "/predictions/history: JWT auth — for dashboard/browser users",
+            "/models: optional auth — works anonymous, adds personalization when logged in",
+            "Cache key includes owner — each client gets its own cache namespace",
           ]
         },
       ]
@@ -1493,246 +1028,837 @@ def decode_token(token: str, expected_type: str = "access") -> TokenData:
     {
       id: "testing",
       icon: "🧪",
-      title: "Testing Patterns",
+      title: "Testing with Dependency Overrides",
       items: [
         {
           title: "Test Fixtures (conftest.py)",
           lang: "python",
           filename: "tests/conftest.py",
-          desc: "Complete test setup: in-memory SQLite, per-test transaction rollback, auth overrides.",
+          desc: "Complete test setup — fake DB, fake model, fake Redis, and layered auth fixtures.",
           code: `import pytest
-import pytest_asyncio
+import fakeredis.aioredis
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from app.main import app, create_app
-from app.database import Base, get_db
-from app.deps import get_current_user
-from app.schemas.auth import TokenData
+from sqlalchemy.ext.asyncio import (
+    create_async_engine, async_sessionmaker, AsyncSession,
+)
 
+from main import app
+from deps import get_db, get_model, get_redis, get_current_user, verify_api_key
+from auth import TokenPayload
+
+# ═══════════════════════════════════════════════════════════════════════
+# DATABASE — in-memory SQLite (fresh tables per test)
+# ═══════════════════════════════════════════════════════════════════════
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+engine = create_async_engine(TEST_DB_URL)
+TestSession = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-@pytest_asyncio.fixture(scope="session")
-async def engine():
-    eng = create_async_engine(TEST_DB_URL, echo=False)
-    async with eng.begin() as conn:
+@pytest.fixture(autouse=True)
+async def setup_db():
+    from models import Base
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield eng
-    await eng.dispose()
+    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
-@pytest_asyncio.fixture()
-async def db(engine):
-    """Isolated per-test transaction — rolls back after each test."""
-    conn = await engine.connect()
-    await conn.begin()
-    session = AsyncSession(bind=conn, expire_on_commit=False)
-    try:
+async def override_get_db():
+    async with TestSession() as session:
         yield session
-    finally:
-        await session.close()
-        await conn.rollback()
-        await conn.close()
 
-@pytest_asyncio.fixture()
-async def client(db):
-    """Unauthenticated HTTP client with DB override."""
-    async def override_get_db():
-        yield db
+# ═══════════════════════════════════════════════════════════════════════
+# ML MODEL — deterministic fake (no GPU, no downloads)
+# ═══════════════════════════════════════════════════════════════════════
+class FakeModel:
+    def predict(self, text: str) -> dict:
+        label = "positive" if "good" in text.lower() else "negative"
+        return {"label": label, "score": 0.95}
 
+    def predict_batch(self, texts: list[str]) -> list[dict]:
+        return [self.predict(t) for t in texts]
+
+fake_model = FakeModel()
+
+# ═══════════════════════════════════════════════════════════════════════
+# REDIS — fakeredis (in-memory, no server needed)
+# ═══════════════════════════════════════════════════════════════════════
+@pytest.fixture
+async def fake_redis():
+    r = fakeredis.aioredis.FakeRedis()
+    yield r
+    await r.flushall()
+
+# ═══════════════════════════════════════════════════════════════════════
+# AUTH — pre-authenticated users
+# ═══════════════════════════════════════════════════════════════════════
+test_user = TokenPayload(sub="1", role="user", type="access")
+test_admin = TokenPayload(sub="99", role="admin", type="access")
+
+# ═══════════════════════════════════════════════════════════════════════
+# HTTP CLIENTS — layered dependency overrides
+# ═══════════════════════════════════════════════════════════════════════
+@pytest.fixture
+async def client(fake_redis):
+    """Unauthenticated — no user, no API key."""
     app.dependency_overrides[get_db] = override_get_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
+    app.dependency_overrides[get_model] = lambda: fake_model
+    app.dependency_overrides[get_redis] = lambda: fake_redis
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test",
+    ) as ac:
+        yield ac
     app.dependency_overrides.clear()
 
-@pytest_asyncio.fixture()
-async def user_client(client):
-    """Authenticated as regular user."""
-    app.dependency_overrides[get_current_user] = lambda: TokenData(user_id=1, role="user")
+@pytest.fixture
+async def auth_client(client):
+    """Authenticated as regular user (JWT)."""
+    app.dependency_overrides[get_current_user] = lambda: test_user
     yield client
-    app.dependency_overrides.pop(get_current_user, None)
 
-@pytest_asyncio.fixture()
+@pytest.fixture
 async def admin_client(client):
-    """Authenticated as admin."""
-    app.dependency_overrides[get_current_user] = lambda: TokenData(user_id=99, role="admin")
+    """Authenticated as admin (JWT)."""
+    app.dependency_overrides[get_current_user] = lambda: test_admin
     yield client
-    app.dependency_overrides.pop(get_current_user, None)
 
+@pytest.fixture
+async def api_key_client(client):
+    """Authenticated with valid API key."""
+    app.dependency_overrides[verify_api_key] = lambda: "test-client-id"
+    yield client`,
+          notes: [
+            "autouse=True on setup_db: every test gets fresh tables — total isolation",
+            "FakeModel: 'good' in text → positive, else → negative — deterministic assertions",
+            "fakeredis: full Redis API in-memory — no server required, works in CI",
+            "Four client fixtures: unauthenticated, user JWT, admin JWT, API key",
+            "dependency_overrides.clear() on teardown prevents leaks between tests",
+          ]
+        },
+        {
+          title: "Prediction Tests",
+          lang: "python",
+          filename: "tests/test_predict.py",
+          desc: "Tests for /predict — happy path, caching, auth enforcement, and validation.",
+          code: `import json
+
+# ── Happy path ────────────────────────────────────────────────────────
+async def test_predict_positive(api_key_client):
+    response = await api_key_client.post(
+        "/predict", json={"text": "This is good"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sentiment"] == "positive"
+    assert data["score"] == 0.95
+
+async def test_predict_negative(api_key_client):
+    response = await api_key_client.post(
+        "/predict", json={"text": "This is terrible"}
+    )
+    assert response.status_code == 200
+    assert response.json()["sentiment"] == "negative"
+
+# ── Caching ───────────────────────────────────────────────────────────
+async def test_predict_cache_hit(api_key_client, fake_redis):
+    r1 = await api_key_client.post("/predict", json={"text": "This is good"})
+    assert r1.status_code == 200
+
+    keys = await fake_redis.keys("predict:*")
+    assert len(keys) == 1    # result was cached
+
+    r2 = await api_key_client.post("/predict", json={"text": "This is good"})
+    assert r2.json()["sentiment"] == r1.json()["sentiment"]
+
+# ── Auth enforcement ──────────────────────────────────────────────────
+async def test_predict_without_api_key_returns_401(client):
+    response = await client.post("/predict", json={"text": "test"})
+    assert response.status_code == 401
+
+# ── Validation ────────────────────────────────────────────────────────
+async def test_predict_empty_text_returns_422(api_key_client):
+    response = await api_key_client.post("/predict", json={"text": ""})
+    assert response.status_code == 422
+
+async def test_predict_missing_text_returns_422(api_key_client):
+    response = await api_key_client.post("/predict", json={})
+    assert response.status_code == 422`,
+          notes: [
+            "FakeModel returns 'positive' for text with 'good' — tests are deterministic",
+            "Cache test: verifies caching layer works without testing Redis internals",
+            "Auth test: unauthenticated 'client' doesn't override verify_api_key → 401",
+            "422 tests verify Pydantic validation surfaces correctly through FastAPI",
+          ]
+        },
+        {
+          title: "Auth Flow Tests",
+          lang: "python",
+          filename: "tests/test_auth.py",
+          desc: "End-to-end auth tests — register, login, protected routes, and role enforcement.",
+          code: `# ── Registration ──────────────────────────────────────────────────────
+async def test_register_success(client):
+    response = await client.post("/auth/register", json={
+        "email": "alice@example.com",
+        "password": "StrongPass123!",
+    })
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "alice@example.com"
+    assert "password" not in data
+    assert "hashed_password" not in data
+
+async def test_register_duplicate_email(client):
+    await client.post("/auth/register", json={
+        "email": "alice@example.com", "password": "StrongPass123!",
+    })
+    response = await client.post("/auth/register", json={
+        "email": "alice@example.com", "password": "DifferentPass456!",
+    })
+    assert response.status_code == 409
+
+# ── Login ─────────────────────────────────────────────────────────────
+async def test_login_success(client):
+    await client.post("/auth/register", json={
+        "email": "bob@example.com", "password": "MySecret789!",
+    })
+    response = await client.post("/auth/login", data={
+        "username": "bob@example.com",    # OAuth2 spec uses 'username'
+        "password": "MySecret789!",
+    })
+    assert response.status_code == 200
+    tokens = response.json()
+    assert "access_token" in tokens
+    assert "refresh_token" in tokens
+    assert tokens["token_type"] == "bearer"
+
+async def test_login_wrong_password(client):
+    await client.post("/auth/register", json={
+        "email": "eve@example.com", "password": "RealPassword1!",
+    })
+    response = await client.post("/auth/login", data={
+        "username": "eve@example.com", "password": "WrongPassword!",
+    })
+    assert response.status_code == 401
+
+# ── Protected routes ──────────────────────────────────────────────────
+async def test_history_requires_auth(client):
+    response = await client.get("/predictions/history")
+    assert response.status_code == 401
+
+async def test_history_with_auth(auth_client):
+    response = await auth_client.get("/predictions/history")
+    assert response.status_code == 200
+
+async def test_admin_route_forbidden_for_user(auth_client):
+    response = await auth_client.get("/admin/users")
+    assert response.status_code == 403
+
+async def test_admin_route_allowed_for_admin(admin_client):
+    response = await admin_client.get("/admin/users")
+    assert response.status_code == 200`,
+          notes: [
+            "Login uses data= (form data), not json= — OAuth2PasswordRequestForm expects form encoding",
+            "Same 401 for wrong password AND nonexistent user — no email enumeration",
+            "Never assert passwords appear in responses — these are security regression tests",
+            "Full register → login flow: catches integration issues between routes",
+          ]
+        },
+        {
+          title: "Middleware Tests",
+          lang: "python",
+          filename: "tests/test_middleware.py",
+          desc: "Tests for cross-cutting concerns — request IDs, timing, and security headers.",
+          code: `# ── Request ID uniqueness ─────────────────────────────────────────────
+async def test_request_id_header(api_key_client):
+    r1 = await api_key_client.post("/predict", json={"text": "good"})
+    r2 = await api_key_client.post("/predict", json={"text": "bad"})
+
+    assert "X-Request-ID" in r1.headers
+    assert "X-Request-ID" in r2.headers
+    assert r1.headers["X-Request-ID"] != r2.headers["X-Request-ID"]
+
+# ── Timing header ─────────────────────────────────────────────────────
+async def test_timing_header(api_key_client):
+    response = await api_key_client.post("/predict", json={"text": "good"})
+    assert "X-Process-Time" in response.headers
+    process_time = float(response.headers["X-Process-Time"])
+    assert process_time < 5.0   # FakeModel is instant
+
+# ── Security headers ─────────────────────────────────────────────────
+async def test_security_headers(api_key_client):
+    response = await api_key_client.post("/predict", json={"text": "good"})
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "DENY"
+
+# ── Running the full suite ────────────────────────────────────────────
+# pytest tests/ -v
+# pytest tests/ --cov=. --cov-report=term-missing
+# pytest tests/ -k "test_predict" -v   # run only predict tests
+#
 # pyproject.toml:
 # [tool.pytest.ini_options]
 # asyncio_mode = "auto"
 # testpaths = ["tests"]`,
           notes: [
-            "scope='session' for the engine (once per test run); default scope for db (once per test)",
-            "Transaction rollback after each test ensures complete isolation",
-            "dependency_overrides is the clean way to swap dependencies — no monkeypatching needed",
-            "ASGITransport runs the app in-process — no network, very fast",
+            "Request ID uniqueness catches the bug of reusing UUIDs across requests",
+            "Security header tests prevent accidental removal during refactoring",
+            "asyncio_mode='auto' means no @pytest.mark.asyncio needed on every test",
+            "The full suite runs in <2 seconds — all in-process, no network, no real services",
           ]
         },
+      ]
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      id: "async-patterns",
+      icon: "⚡",
+      title: "Async Patterns & Background Tasks",
+      items: [
         {
-          title: "Integration Tests",
+          title: "Concurrent I/O with asyncio.gather",
           lang: "python",
-          filename: "tests/test_users.py",
-          desc: "Comprehensive integration tests covering happy path, auth, and error cases.",
-          code: `import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import User
-from app.auth import hash_password
+          filename: "concurrent_io.py",
+          desc: "Fetch multiple data sources concurrently — total time equals the slowest query, not the sum.",
+          code: `import asyncio
+from fastapi import APIRouter
+from deps import DB, Redis, CurrentUser
 
-pytestmark = pytest.mark.asyncio
+router = APIRouter(tags=["dashboard"])
 
-# ── Helper to seed data ───────────────────────────────────────────────────
-async def make_user(db: AsyncSession, **kwargs) -> User:
-    defaults = {
-        "username": "testuser",
-        "email": "test@example.com",
-        "hashed_password": hash_password("SecurePass1"),
-        "role": "user",
-        "is_active": True,
+async def get_prediction_count(db, user_id: str) -> int:
+    result = await db.execute(
+        "SELECT COUNT(*) FROM predictions WHERE user_id = :uid",
+        {"uid": user_id},
+    )
+    return result.scalar_one()
+
+async def get_cached_predictions(redis, user_id: str) -> int:
+    keys = await redis.keys(f"predict:{user_id}:*")
+    return len(keys)
+
+async def get_model_info(redis) -> dict:
+    info = await redis.get("model:info")
+    return {"name": "sentiment-v1", "loaded": info is not None}
+
+@router.get("/dashboard")
+async def user_dashboard(
+    user: CurrentUser,
+    db: DB,
+    redis: Redis,
+):
+    # Fire all queries concurrently
+    total, cached, model = await asyncio.gather(
+        get_prediction_count(db, user.sub),
+        get_cached_predictions(redis, user.sub),
+        get_model_info(redis),
+        return_exceptions=True,
+    )
+
+    return {
+        "user_id": user.sub,
+        "total_predictions": total if not isinstance(total, Exception) else 0,
+        "cached_predictions": cached if not isinstance(cached, Exception) else 0,
+        "model": model if not isinstance(model, Exception) else None,
     }
-    user = User(**{**defaults, **kwargs})
-    db.add(user)
-    await db.flush()
-    return user
 
-# ── Create user ───────────────────────────────────────────────────────────
-async def test_create_user_success(client: AsyncClient):
-    resp = await client.post("/api/v1/users", json={
-        "username": "alice",
-        "email": "alice@example.com",
-        "password": "SecurePass1",
-    })
-    assert resp.status_code == 201
-    body = resp.json()
-    assert body["username"] == "alice"
-    assert "password" not in body
-    assert "hashed_password" not in body
-
-async def test_create_user_weak_password(client: AsyncClient):
-    resp = await client.post("/api/v1/users", json={
-        "username": "bob",
-        "email": "bob@example.com",
-        "password": "weak",       # too short
-    })
-    assert resp.status_code == 422
-
-async def test_create_user_duplicate_email(client: AsyncClient, db: AsyncSession):
-    await make_user(db, email="dup@example.com", username="existing")
-
-    resp = await client.post("/api/v1/users", json={
-        "username": "newuser",
-        "email": "dup@example.com",    # duplicate
-        "password": "SecurePass1",
-    })
-    assert resp.status_code == 409
-
-# ── Auth tests ────────────────────────────────────────────────────────────
-async def test_get_own_profile(user_client: AsyncClient):
-    resp = await user_client.get("/users/me")
-    assert resp.status_code == 200
-
-async def test_unauthenticated_returns_401(client: AsyncClient):
-    resp = await client.get("/users/me")
-    assert resp.status_code == 401
-
-async def test_user_cannot_access_admin_route(user_client: AsyncClient):
-    resp = await user_client.get("/api/v1/admin/users")
-    assert resp.status_code == 403
-
-async def test_admin_can_access_admin_route(admin_client: AsyncClient, db: AsyncSession):
-    await make_user(db)
-    resp = await admin_client.get("/api/v1/admin/users")
-    assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
-
-# ── Pagination ────────────────────────────────────────────────────────────
-async def test_list_users_pagination(admin_client: AsyncClient, db: AsyncSession):
-    for i in range(5):
-        await make_user(db, username=f"user{i}", email=f"u{i}@example.com")
-
-    resp = await admin_client.get("/api/v1/users?skip=0&limit=2")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert len(body["items"]) == 2
-    assert body["total"] >= 5`,
+# Sequential: 3 queries × 50ms = 150ms
+# Concurrent: max(50ms, 50ms, 50ms) = ~50ms`,
           notes: [
-            "make_user helper with **kwargs allows per-test customization with sensible defaults",
-            "Test the response contract, not internal implementation — avoid assert user.id == db_user.id",
-            "Always test both success and failure cases — 201, 409, 422 for create",
-            "Flush (not commit) in fixtures — the test transaction captures it and rolls back after",
+            "asyncio.gather runs all coroutines concurrently — 3x speedup for 3 independent queries",
+            "return_exceptions=True: failures return as values instead of crashing the whole gather",
+            "isinstance(result, Exception) handles partial failures gracefully",
+            "This pattern works because all queries are I/O-bound (waiting on DB/Redis), not CPU-bound",
           ]
         },
         {
-          title: "Mocking External Services",
+          title: "BackgroundTasks for Post-Response Work",
           lang: "python",
-          filename: "tests/test_external.py",
-          desc: "Mock OpenAI, HTTP clients, and email services in tests.",
-          code: `import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, Response as HttpxResponse
+          filename: "background_tasks.py",
+          desc: "Run work after the HTTP response is returned — logging, notifications, cache invalidation.",
+          code: `from fastapi import APIRouter, BackgroundTasks
+import logging
 
-pytestmark = pytest.mark.asyncio
+router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# ── Mock OpenAI completion ────────────────────────────────────────────────
-async def test_inference_returns_completion(user_client: AsyncClient):
-    mock_choice = MagicMock()
-    mock_choice.message.content = "The capital of France is Paris."
-
-    mock_completion = MagicMock()
-    mock_completion.choices = [mock_choice]
-    mock_completion.usage.total_tokens = 42
-
-    with patch(
-        "app.services.llm.openai_client.chat.completions.create",
-        new=AsyncMock(return_value=mock_completion),
-    ):
-        resp = await user_client.post("/inference", json={
-            "prompt": "What is the capital of France?",
-            "model": "gpt-4o-mini",
-        })
-
-    assert resp.status_code == 200
-    body = resp.json()
-    assert "Paris" in body["answer"]
-    assert body["tokens_used"] == 42
-
-# ── Mock httpx for external API calls ────────────────────────────────────
-async def test_webhook_delivery(user_client: AsyncClient):
-    # Using respx (pip install respx) — cleaner than patch for httpx
-    import respx
-
-    with respx.mock(assert_all_called=True) as mock:
-        mock.post("https://hooks.example.com/notify").mock(
-            return_value=HttpxResponse(200, json={"ok": True})
+# ── Background task functions ─────────────────────────────────────────
+async def log_prediction_to_db(
+    user_id: str,
+    text: str,
+    sentiment: str,
+    score: float,
+):
+    """Runs after response — doesn't add latency to the prediction."""
+    try:
+        # In production: insert into predictions table
+        logger.info(
+            "prediction_logged",
+            extra={
+                "user_id": user_id,
+                "text_preview": text[:100],
+                "sentiment": sentiment,
+                "score": score,
+            },
         )
-        resp = await user_client.post("/events", json={
-            "type": "user.created",
-            "user_id": 1,
-        })
+    except Exception as e:
+        # Background task failures are silent — must catch and log
+        logger.error("prediction_log_failed", extra={"error": str(e)})
 
-    assert resp.status_code == 200
+async def invalidate_user_cache(redis, user_id: str):
+    """Clear cached predictions when user updates preferences."""
+    try:
+        keys = await redis.keys(f"predict:{user_id}:*")
+        if keys:
+            await redis.delete(*keys)
+    except Exception as e:
+        logger.warning("cache_invalidation_failed", extra={"error": str(e)})
 
-# ── Mock email sending ─────────────────────────────────────────────────────
-async def test_registration_sends_email(client: AsyncClient):
-    with patch("app.services.email.send_welcome_email") as mock_email:
-        mock_email.return_value = None   # it's a BackgroundTask, returns None
+# ── Usage in route ────────────────────────────────────────────────────
+@router.post("/predict")
+async def predict(
+    body: PredictRequest,
+    model: Model,
+    bg: BackgroundTasks,
+    owner: ApiKeyOwner,
+):
+    result = model.predict(body.text)
 
-        resp = await client.post("/api/v1/users", json={
-            "username": "newuser",
-            "email": "new@example.com",
-            "password": "SecurePass1",
-        })
-        assert resp.status_code == 201
+    # These run AFTER the response is returned to the client
+    bg.add_task(log_prediction_to_db, owner, body.text, result["label"], result["score"])
 
-        # Email was scheduled (called once with correct args)
-        mock_email.assert_called_once()
-        call_kwargs = mock_email.call_args
-        assert "new@example.com" in str(call_kwargs)`,
+    return {"sentiment": result["label"], "score": result["score"]}`,
           notes: [
-            "Patch at the point of use: 'app.services.llm.openai_client', not 'openai.AsyncOpenAI'",
-            "AsyncMock is required for async functions — regular Mock raises 'coroutine never awaited'",
-            "respx is purpose-built for mocking httpx — cleaner than patch for HTTP tests",
-            "assert_all_called=True in respx ensures the mock was actually hit (catches dead code)",
+            "BackgroundTasks run after response — client doesn't wait for logging/notifications",
+            "Always wrap background tasks in try/except — failures are silent by default",
+            "BackgroundTasks are NOT persistent — if the server crashes, tasks are lost",
+            "For guaranteed delivery: use Celery + Redis or a proper job queue",
+          ]
+        },
+        {
+          title: "Streaming Responses (SSE)",
+          lang: "python",
+          filename: "streaming.py",
+          desc: "Stream results to the client using Server-Sent Events — the pattern ChatGPT uses.",
+          code: `from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import asyncio
+import json
+
+app = FastAPI()
+
+async def batch_stream(texts: list[str], model):
+    """Generator that yields SSE-formatted results as each completes."""
+    for i, text in enumerate(texts):
+        # Process one at a time, streaming results
+        result = model.predict(text)
+        chunk = {
+            "index": i,
+            "text": text[:50],
+            "sentiment": result["label"],
+            "score": result["score"],
+            "done": i == len(texts) - 1,
+        }
+        yield f"data: {json.dumps(chunk)}\\n\\n"
+        await asyncio.sleep(0)   # yield to event loop
+
+    yield f"data: {json.dumps({'done': True, 'total': len(texts)})}\\n\\n"
+
+@app.post("/predict/stream")
+async def stream_predictions(body: BatchPredictRequest, model: Model):
+    return StreamingResponse(
+        batch_stream(body.texts, model),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",   # disable nginx buffering
+        },
+    )
+
+# Client-side usage:
+# const source = new EventSource('/predict/stream')
+# source.onmessage = (e) => {
+#   const data = JSON.parse(e.data)
+#   console.log(data.sentiment, data.score)
+# }`,
+          notes: [
+            "SSE format: 'data: <payload>\\n\\n' — double newline is mandatory",
+            "X-Accel-Buffering: no prevents Nginx from buffering the stream",
+            "StreamingResponse accepts any async generator yielding bytes or strings",
+            "Use for batch predictions where you want to show progress as each completes",
+          ]
+        },
+      ]
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      id: "docker-production",
+      icon: "🐳",
+      title: "Dockerize & Production Deploy",
+      items: [
+        {
+          title: "Multi-Stage Dockerfile",
+          lang: "dockerfile",
+          filename: "Dockerfile",
+          desc: "Production build — builder stage compiles dependencies, production stage is slim and secure.",
+          code: `# ═══════════════════════════════════════════════════════════════════════
+# Stage 1: Build dependencies (discarded after build)
+# ═══════════════════════════════════════════════════════════════════════
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    gcc libffi-dev \\
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ═══════════════════════════════════════════════════════════════════════
+# Stage 2: Production (no gcc, no pip cache, non-root)
+# ═══════════════════════════════════════════════════════════════════════
+FROM python:3.12-slim AS production
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
+
+RUN useradd --create-home --shell /bin/bash appuser
+
+COPY main.py config.py deps.py auth.py model.py schemas.py \\
+     middleware.py logging_config.py ./
+COPY routers/ ./routers/
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \\
+    CMD ["python", "-c", \\
+         "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+
+EXPOSE 8000
+
+CMD ["gunicorn", "main:app", \\
+     "--worker-class", "uvicorn.workers.UvicornWorker", \\
+     "--workers", "1", \\
+     "--bind", "0.0.0.0:8000", \\
+     "--timeout", "120", \\
+     "--graceful-timeout", "30", \\
+     "--max-requests", "1000", \\
+     "--max-requests-jitter", "100", \\
+     "--access-logfile", "-", \\
+     "--error-logfile", "-"]`,
+          notes: [
+            "Multi-stage: production image has no gcc, no pip cache (~40% smaller)",
+            "--prefix=/install: pip installs to a separate dir, COPY --from=builder copies it cleanly",
+            "Non-root user (appuser) — never run containers as root, even inside K8s",
+            "--workers=1 because K8s scales via pod replicas, not Gunicorn workers",
+            "--max-requests=1000 recycles workers to prevent memory leaks from accumulating",
+            "--start-period=40s gives the ML model time to load before health checks begin",
+          ]
+        },
+        {
+          title: "Docker Compose (Dev Environment)",
+          lang: "yaml",
+          filename: "docker-compose.yml",
+          desc: "Local dev stack — API with hot reload, PostgreSQL, and Redis with health checks.",
+          code: `services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/sentiment
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Dev override: hot reload instead of Gunicorn
+    command: >
+      uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    volumes:
+      - .:/app    # mount source for hot reload
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sentiment
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:`,
+          notes: [
+            "command overrides Gunicorn with uvicorn --reload for hot reload in dev",
+            "volumes: .:/app mounts source — changes reflected without rebuilding",
+            "depends_on with condition: service_healthy waits for DB/Redis readiness",
+            "Production: remove command and volumes — use the Dockerfile CMD",
+            "Database URL uses 'db' hostname (Docker DNS), not localhost",
+          ]
+        },
+        {
+          title: "Health Check Endpoints",
+          lang: "python",
+          filename: "routers/health.py",
+          desc: "Liveness vs readiness probes — Kubernetes uses these to manage pod lifecycle.",
+          code: `import time
+from fastapi import APIRouter
+from deps import DB, Redis
+
+router = APIRouter(tags=["health"])
+START_TIME = time.time()
+
+@router.get("/health")
+async def health():
+    """
+    Liveness probe — is the process alive?
+    K8s: if this fails, RESTART the pod.
+    Should NOT check DB/Redis (their outage != restart all pods).
+    """
+    return {
+        "status": "healthy",
+        "uptime": round(time.time() - START_TIME),
+    }
+
+@router.get("/health/ready")
+async def readiness(db: DB, redis: Redis):
+    """
+    Readiness probe — can this pod serve traffic?
+    K8s: if this fails, REMOVE from load balancer (don't restart).
+    """
+    checks = {}
+    healthy = True
+
+    try:
+        await db.execute("SELECT 1")
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = str(e)
+        healthy = False
+
+    try:
+        await redis.ping()
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = str(e)
+        healthy = False
+
+    return {
+        "status": "ready" if healthy else "not_ready",
+        "checks": checks,
+    }`,
+          notes: [
+            "Liveness: lightweight, no external deps — restarting pods when DB is down makes things worse",
+            "Readiness: checks DB + Redis — failing removes pod from Service endpoints (load balancer)",
+            "K8s probes hit these every 10-30s — keep them fast (<100ms)",
+            "startupProbe (in K8s manifest) gives the ML model time to load before probes begin",
+          ]
+        },
+        {
+          title: "Build & Deploy Commands",
+          lang: "bash",
+          filename: "terminal (macOS)",
+          desc: "Build, test, and run the Sentiment API — from local dev to production image.",
+          code: `# ── Build production image ────────────────────────────────────────────
+docker build -t sentiment-api:latest .
+
+# Check image size (should be ~300MB, not 1.5GB)
+docker images sentiment-api
+
+# ── Local development with compose ───────────────────────────────────
+docker compose up -d
+docker compose logs -f api
+
+# Test the API
+curl -X POST http://localhost:8000/predict \\
+  -H "X-API-Key: your-test-key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"text": "This product is amazing"}'
+
+# Run tests inside the container
+docker compose exec api pytest tests/ -v
+
+# ── Production build ─────────────────────────────────────────────────
+docker build -t sentiment-api:1.0.0 .
+docker run -p 8000:8000 --env-file .env sentiment-api:1.0.0
+
+# ── Push to registry ─────────────────────────────────────────────────
+docker tag sentiment-api:1.0.0 ghcr.io/yourorg/sentiment-api:1.0.0
+docker push ghcr.io/yourorg/sentiment-api:1.0.0
+
+# ── Kubernetes (preview — Module 4 covers this in depth) ─────────────
+kubectl apply -f k8s/deployment.yaml
+kubectl get pods -w                  # watch pod status
+kubectl logs -f deploy/sentiment-api # stream logs`,
+          notes: [
+            "Tag with version (1.0.0) for production — :latest is for development only",
+            "python:3.12-slim base is ~120MB, ML deps add ~180MB = ~300MB total",
+            "docker compose exec runs commands inside running containers",
+            "Production: --env-file for secrets — never bake secrets into the image",
+          ]
+        },
+      ]
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+      id: "kubernetes-preview",
+      icon: "☸️",
+      title: "Kubernetes Manifests (Preview)",
+      items: [
+        {
+          title: "Deployment + Service",
+          lang: "yaml",
+          filename: "k8s/deployment.yaml",
+          desc: "K8s manifests for the Sentiment API — 3 replicas, secrets, resource limits, and probes.",
+          code: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sentiment-api
+  template:
+    metadata:
+      labels:
+        app: sentiment-api
+    spec:
+      containers:
+        - name: api
+          image: sentiment-api:1.0.0
+          ports:
+            - containerPort: 8000
+          env:
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: jwt-secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: database-url
+            - name: REDIS_URL
+              value: "redis://redis-svc:6379/0"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 30       # 30 x 10s = 5 min max startup
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentiment-api
+spec:
+  selector:
+    app: sentiment-api
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP`,
+          notes: [
+            "Secrets from K8s Secrets (secretKeyRef), not plain env vars — never commit secrets to YAML",
+            "startupProbe: gives ML model up to 5 min to load before liveness/readiness activate",
+            "resources.requests: scheduler uses these for pod placement; limits: OOMKilled if exceeded",
+            "3 replicas behind ClusterIP Service — internal load balancing across pods",
+            "This is a preview — Module 4 covers Deployments, Services, Ingress, and HPA in depth",
+          ]
+        },
+        {
+          title: "Production Checklist",
+          lang: "bash",
+          filename: "production-checklist.sh",
+          desc: "Everything you need for production — mapped to the lesson where each was implemented.",
+          code: `# ═══════════════════════════════════════════════════════════════════════
+# PRODUCTION READINESS CHECKLIST — Sentiment Analysis API
+# ═══════════════════════════════════════════════════════════════════════
+
+# SECURITY
+# ✅ Non-root container user (appuser)          — Lesson 9: Dockerfile
+# ✅ JWT with pinned algorithm + expiry         — Lesson 7: auth.py
+# ✅ Secrets from env vars / K8s secrets        — Lesson 3: config.py
+# ✅ CORS allowlist (not wildcard)              — Lesson 5: middleware
+# ✅ Security headers (nosniff, DENY, HSTS)     — Lesson 5: middleware
+
+# RELIABILITY
+# ✅ Health checks (liveness + readiness)       — Lesson 9: health.py
+# ✅ Graceful shutdown (lifespan)               — Lesson 6: main.py
+# ✅ Worker recycling (--max-requests)          — Lesson 9: Dockerfile
+
+# OBSERVABILITY
+# ✅ Structured JSON logging                    — Lesson 5: logging_config.py
+# ✅ Request ID tracing                         — Lesson 5: middleware
+# ✅ Request timing headers                     — Lesson 5: middleware
+
+# PERFORMANCE
+# ✅ ML model loaded once at startup            — Lesson 6: lifespan
+# ✅ Redis prediction caching                   — Lesson 6: predict.py
+# ✅ Background tasks for logging               — Lesson 6: predict.py
+
+# TESTING
+# ✅ Dependency override test fixtures          — Lesson 8: conftest.py
+# ✅ Auth enforcement tests                     — Lesson 8: test_auth.py
+# ✅ >90% code coverage                         — Lesson 8: pytest-cov
+
+# BUILD
+# ✅ Multi-stage Docker build                   — Lesson 9: Dockerfile
+# ✅ Layer caching (deps before code)           — Lesson 9: Dockerfile
+# ✅ .dockerignore (exclude .venv, __pycache__) — Lesson 9`,
+          notes: [
+            "Every item maps to a specific lesson — nothing appears out of thin air",
+            "This checklist connects the entire FastAPI module into a coherent production story",
+            "Module 3 adds: PostgreSQL with connection pooling, Redis patterns, MongoDB",
+            "Module 4 adds: full Kubernetes deployment, Ingress, HPA autoscaling",
+            "Module 6 adds: CI/CD pipeline (GitHub Actions → Docker build → K8s deploy)",
           ]
         },
       ]

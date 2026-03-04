@@ -256,6 +256,7 @@ function renderModuleView(m) {
       <button class="tab" data-tab="resources">🔗 Resources</button>
       <button class="tab" data-tab="interview">💬 Interview Prep</button>
       ${m.codeExamples ? `<button class="tab" data-tab="code">💻 Code Examples</button>` : ""}
+      ${m.presentation ? `<button class="tab" data-tab="presentation">🎞 Presentation</button>` : ""}
     </div>
 
     ${hasLearn ? `<div class="tab-content active" id="tab-learn"></div>` : ""}
@@ -327,6 +328,7 @@ function renderModuleView(m) {
     </div>
 
     ${m.codeExamples ? `<div class="tab-content" id="tab-code"></div>` : ""}
+    ${m.presentation ? `<div class="tab-content" id="tab-presentation"></div>` : ""}
   `;
 
   // Tab switching
@@ -346,6 +348,20 @@ function renderModuleView(m) {
       if (tab.dataset.tab === "code" && m.codeExamples && !tabEl.dataset.rendered) {
         tabEl.dataset.rendered = "1";
         renderCodeExamples(m, tabEl);
+      }
+      // Lazy-render presentation tab on first open
+      if (tab.dataset.tab === "presentation" && m.presentation && !tabEl.dataset.rendered) {
+        tabEl.dataset.rendered = "1";
+        tabEl.innerHTML = `
+          <div style="margin-bottom:12px; display:flex; align-items:center; gap:12px;">
+            <span style="color:#aaa; font-size:0.85em;">Fullscreen slideshow for this module.</span>
+            <a href="${m.presentation}" target="_blank" rel="noopener"
+               style="padding:6px 14px; background:rgba(0,212,170,0.15); color:#00d4aa;
+                      border:1px solid #00d4aa; border-radius:6px; font-size:0.8em;
+                      text-decoration:none;">↗ Open in new tab</a>
+          </div>
+          <iframe src="${m.presentation}" style="width:100%; height:72vh; border:1px solid rgba(255,255,255,0.1); border-radius:10px;"></iframe>
+        `;
       }
     });
   });
@@ -603,7 +619,7 @@ function showHighlightTooltip(x, y, onColor) {
 function getHighlightableTextNodes(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
-      if (node.parentElement.closest("pre, code, .lesson-code-block")) return NodeFilter.FILTER_REJECT;
+      if (node.parentElement.closest("pre, .lesson-code-block")) return NodeFilter.FILTER_REJECT;
       return NodeFilter.FILTER_ACCEPT;
     }
   });
@@ -623,9 +639,9 @@ function serializeRange(range, container) {
   const selectedText = range.toString();
   if (!selectedText.trim()) return null;
 
-  // Skip selections that start inside a code block
+  // Skip selections that start inside a code block (pre or pre > code), not inline code
   if (range.startContainer.parentElement &&
-      range.startContainer.parentElement.closest("pre, code, .lesson-code-block")) return null;
+      range.startContainer.parentElement.closest("pre, .lesson-code-block")) return null;
 
   const nodes = getHighlightableTextNodes(container);
 
@@ -652,37 +668,37 @@ function applyHighlights(lessonBody, lessonKey) {
   });
 }
 
-// Walk highlightable text nodes and wrap the matching range in a <mark>
+// Walk highlightable text nodes and wrap the matching range in <mark> elements.
+// Handles multi-node ranges (e.g. selections spanning across <strong>, <em>, <code>).
 function highlightTextInNode(root, startOffset, length, hid, color) {
   const nodes = getHighlightableTextNodes(root);
   const rangeEnd = startOffset + length;
 
   for (const { node, start, end } of nodes) {
-    if (start <= startOffset && rangeEnd <= end) {
-      const localStart = startOffset - start;
-      const localEnd = rangeEnd - start;
-      const before = node.textContent.slice(0, localStart);
-      const highlighted = node.textContent.slice(localStart, localEnd);
-      const after = node.textContent.slice(localEnd);
+    // Skip nodes entirely outside the range
+    if (end <= startOffset || start >= rangeEnd) continue;
 
-      if (!highlighted) continue;
+    const localStart = Math.max(0, startOffset - start);
+    const localEnd = Math.min(node.length, rangeEnd - start);
+    const highlighted = node.textContent.slice(localStart, localEnd);
+    if (!highlighted) continue;
 
-      const mark = document.createElement("mark");
-      mark.className = "user-highlight";
-      mark.dataset.hid = hid;
-      mark.dataset.color = color.name;
-      mark.style.background = color.bg;
-      mark.style.color = color.text;
-      mark.textContent = highlighted;
+    const mark = document.createElement("mark");
+    mark.className = "user-highlight";
+    mark.dataset.hid = hid;
+    mark.dataset.color = color.name;
+    mark.style.background = color.bg;
+    mark.style.color = color.text;
+    mark.textContent = highlighted;
 
-      const parent = node.parentNode;
-      const frag = document.createDocumentFragment();
-      if (before) frag.appendChild(document.createTextNode(before));
-      frag.appendChild(mark);
-      if (after) frag.appendChild(document.createTextNode(after));
-      parent.replaceChild(frag, node);
-      return;
-    }
+    const before = node.textContent.slice(0, localStart);
+    const after = node.textContent.slice(localEnd);
+    const parent = node.parentNode;
+    const frag = document.createDocumentFragment();
+    if (before) frag.appendChild(document.createTextNode(before));
+    frag.appendChild(mark);
+    if (after) frag.appendChild(document.createTextNode(after));
+    parent.replaceChild(frag, node);
   }
 }
 
@@ -706,8 +722,8 @@ function removeHighlight(moduleId, lessonId, hid) {
 // Attach the selection→highlight listener to a lesson body element
 function attachHighlightListener(lessonBody, moduleId, lessonId, onHighlightChange) {
   lessonBody.addEventListener("mouseup", (e) => {
-    // Don't trigger inside code blocks
-    if (e.target.closest("pre, code, .lesson-code-block")) return;
+    // Don't trigger inside code blocks (pre or pre > code), allow inline code
+    if (e.target.closest("pre, .lesson-code-block")) return;
 
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.toString().trim()) {
@@ -820,7 +836,12 @@ function renderLessons(m, container) {
       state.completedTopics[key] = !state.completedTopics[key];
       if (!state.completedTopics[key]) delete state.completedTopics[key];
       saveState();
+      const activeLid = container.querySelector(".code-nav-item.active")?.dataset.lid;
       renderLessons(m, container);
+      if (activeLid) {
+        const navItem = container.querySelector(`[data-lid="${activeLid}"]`);
+        if (navItem) navItem.click();
+      }
       if (typeof Prism !== "undefined") Prism.highlightAllUnder(container);
     });
   });
@@ -842,7 +863,16 @@ function renderLessons(m, container) {
     if (!body) return;
     applyHighlights(body, `${m.id}:${l.id}`);
     attachHighlightListener(body, m.id, l.id, () => {
+      const activeLid = container.querySelector(".code-nav-item.active")?.dataset.lid;
       renderLessons(m, container);
+      if (activeLid) {
+        container.querySelectorAll(".code-nav-item").forEach(n => n.classList.remove("active"));
+        container.querySelectorAll(".lesson-section").forEach(s => s.classList.remove("active"));
+        const navItem = container.querySelector(`[data-lid="${activeLid}"]`);
+        if (navItem) navItem.classList.add("active");
+        const sec = document.getElementById(`lsec-${activeLid}`);
+        if (sec) sec.classList.add("active");
+      }
       if (typeof Prism !== "undefined") Prism.highlightAllUnder(container);
     });
   });

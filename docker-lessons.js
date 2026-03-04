@@ -4,6 +4,8 @@
 (function patchDockerLessons() {
   const m = CURRICULUM.phases[0].modules[0];
 
+  m.presentation = "docker-presentation.html";
+
   m.lessons = [
 
     // ═══════════════════════════════════════════════════════════════════════

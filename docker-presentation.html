@@ -117,7 +117,7 @@
       position: relative;
     }
     .timeline-step::after {
-      content: '→';
+      content: '\2192';
       position: absolute;
       right: -8px;
       top: 50%;
@@ -146,14 +146,14 @@
       line-height: 1.4;
     }
     .checklist li::before {
-      content: '✓';
+      content: '\2713';
       position: absolute;
       left: 0;
       color: var(--accent);
       font-weight: 700;
     }
     .checklist li.bad::before {
-      content: '✗';
+      content: '\2717';
       color: var(--warn);
     }
 
@@ -262,11 +262,11 @@
 <div class="slides">
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- COVER                                                  -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- COVER                                                   -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section class="center">
-  <div class="cover-module">AI Backend Engineer Series · Module 1</div>
+  <div class="cover-module">AI Backend Engineer Series &middot; Module 1</div>
   <h1 style="margin-top: 16px;">Docker<br>Deep Dive</h1>
   <p style="color: #aaa; font-size: 0.8em; margin-top: 16px;">
     From dependency hell to production-grade containerization.<br>
@@ -277,42 +277,42 @@
     <div class="stat"><div class="stat-num">~2h</div><div class="stat-label">Read time</div></div>
     <div class="stat"><div class="stat-num">5</div><div class="stat-label">ML Patterns</div></div>
   </div>
-  <aside class="notes">Welcome. This deck covers everything in the Docker Deep Dive module — from why containers exist to running five production ML system patterns. Each slide corresponds to one lesson.</aside>
+  <aside class="notes">Welcome. This deck covers everything in the Docker Deep Dive module — from why containers exist to designing five production ML system patterns with Docker. Each section corresponds to one lesson. Press S for speaker notes with interview tips.</aside>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- AGENDA                                                 -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- AGENDA                                                  -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <h2>What We Cover</h2>
   <div class="card-grid cols-2">
     <div class="card">
-      <div class="card-title">Foundation</div>
+      <div class="card-title">Foundation (1-3)</div>
       <ul>
-        <li>Why containers exist — the problem they solve</li>
-        <li>Docker architecture — what actually runs</li>
+        <li>Why containers exist &mdash; the problem they solve</li>
+        <li>Docker architecture &mdash; what actually runs</li>
         <li>Images, layers, and the packaging model</li>
       </ul>
     </div>
     <div class="card">
-      <div class="card-title">Building & Running</div>
+      <div class="card-title">Building &amp; Running (4-6)</div>
       <ul>
-        <li>Writing Dockerfiles — bad to production-grade</li>
-        <li>Running containers — lifecycle, networking, volumes</li>
-        <li>Docker Compose — multi-container stacks</li>
+        <li>Writing Dockerfiles &mdash; bad to production-grade</li>
+        <li>Running containers &mdash; lifecycle, networking, volumes</li>
+        <li>Docker Compose &mdash; multi-container stacks</li>
       </ul>
     </div>
     <div class="card">
-      <div class="card-title">Production</div>
+      <div class="card-title">Production (7-9)</div>
       <ul>
-        <li>Container security — hardening for prod</li>
+        <li>Container security &mdash; hardening for prod</li>
         <li>Registries &amp; CI/CD integration</li>
-        <li>Debugging — systematic workflows</li>
+        <li>Debugging &mdash; systematic workflows</li>
       </ul>
     </div>
     <div class="card">
-      <div class="card-title">ML System Design</div>
+      <div class="card-title">ML System Design (10)</div>
       <ul>
         <li>Inference services &amp; training pipelines</li>
         <li>RAG systems &amp; feature stores</li>
@@ -320,19 +320,19 @@
       </ul>
     </div>
   </div>
-  <aside class="notes">Ten lessons split across four themes. Foundation → Build → Production → ML-specific patterns.</aside>
+  <aside class="notes">Ten lessons split across four themes. Foundation teaches you the concepts, Building teaches you the craft, Production teaches you the discipline, and System Design teaches you the architecture. Interview tip: being able to articulate all four themes shows senior-level understanding.</aside>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 1: The Problem Docker Solves                    -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 1: The Problem Docker Solves                     -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">01</div>
     <h2>The Problem Docker Solves</h2>
-    <p style="color: #aaa; font-size: 0.8em;">Dependency hell — and the three eras of deployment</p>
-    <aside class="notes">Start with the story everyone has lived through at least once as an ML engineer.</aside>
+    <p style="color: #aaa; font-size: 0.8em;">Dependency hell &mdash; and the three eras of deployment</p>
+    <aside class="notes">Start with the story everyone has lived through as an ML engineer. This lesson answers "why containers exist" at the kernel level.</aside>
   </section>
 
   <section>
@@ -344,824 +344,1048 @@
     <div class="card" style="margin-top: 16px;">
       <div class="card-title">The Chain of Failures</div>
       <ul>
-        <li>Their server has Python 3.9 — your code uses <code>match</code> (3.10+)</li>
-        <li>Install 3.11 — NumPy can't find <code>libopenblas</code></li>
-        <li>Fix that — PyTorch complains about CUDA 11.8 vs 12.1</li>
-        <li>Three days later: polluted production server with pinned system libraries</li>
+        <li>Their server has Python 3.9 &mdash; your code uses <code>match</code> (3.10+)</li>
+        <li>Install 3.11 &mdash; NumPy can't find <code>libopenblas</code></li>
+        <li>Fix that &mdash; PyTorch complains about CUDA 11.8 vs 12.1</li>
+        <li>Fix CUDA &mdash; six other services on the same server break</li>
       </ul>
     </div>
-    <p style="font-size: 0.7em; color: var(--accent); margin-top: 14px;">This is <strong>dependency hell</strong>. Docker was built to eliminate it.</p>
-    <aside class="notes">ML dependency problems are worse than typical web dev because you also have CUDA versions, cuDNN, C extensions, hardware-specific optimizations.</aside>
+    <p style="font-size: 0.72em; color: var(--warn); margin-top: 12px;">
+      Every fix creates a new problem. This is <strong>dependency hell</strong>.
+    </p>
+    <aside class="notes">Interview tip: When asked "why Docker?", don't say "it's a lightweight VM." Say it solves dependency isolation at the OS level while sharing the host kernel. The ML angle (CUDA, PyTorch, system libs) resonates with AI-focused interviewers.</aside>
   </section>
 
   <section>
     <h2>Three Eras of Deployment</h2>
-    <table class="compare">
-      <thead>
-        <tr><th>Era</th><th>Mechanism</th><th>Overhead</th><th>Boot time</th><th>Pain point</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Bare Metal</strong></td>
-          <td>One app per server</td>
-          <td>10–15% utilization</td>
-          <td>Weeks to provision</td>
-          <td>Snowflake servers, configuration drift</td>
-        </tr>
-        <tr>
-          <td><strong>Virtual Machines</strong></td>
-          <td>Hypervisor carves hardware</td>
-          <td>1–2 GB per VM</td>
-          <td>30–60 seconds</td>
-          <td>Duplicate OS kernels, heavy images (10–20 GB)</td>
-        </tr>
-        <tr style="background: rgba(0,212,170,0.05);">
-          <td><strong>Containers</strong> <span class="tag tag-green">Now</span></td>
-          <td>Shared kernel, isolated env</td>
-          <td>Megabytes</td>
-          <td>Milliseconds</td>
-          <td>Weaker isolation than VMs (shared kernel)</td>
-        </tr>
-      </tbody>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Bare Metal</div>
+          <div class="ts-desc">One app per server.<br>$10K/server. Months to provision.</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Virtual Machines</div>
+          <div class="ts-desc">Multiple OS per server.<br>Minutes to provision. GB-sized.</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Containers</div>
+          <div class="ts-desc">Shared kernel, isolated space.<br>Seconds to start. MB-sized.</div>
+        </div>
+      </div>
+    </div>
+    <table class="compare" style="margin-top: 20px;">
+      <tr><th></th><th>VM</th><th>Container</th></tr>
+      <tr><td>Boot time</td><td>30-60 seconds</td><td>~100ms</td></tr>
+      <tr><td>Size</td><td>1-20 GB</td><td>50-500 MB</td></tr>
+      <tr><td>Isolation</td><td>Full (own kernel)</td><td>Process-level (shared kernel)</td></tr>
+      <tr><td>Density</td><td>10-20 per host</td><td>100s per host</td></tr>
     </table>
-    <aside class="notes">The key insight: applications don't need a separate kernel — they just need an isolated view of filesystem, processes, and network.</aside>
+    <aside class="notes">VMs virtualize hardware (hypervisor). Containers virtualize the OS (namespaces + cgroups). That's why containers are 100x faster to start. Interview question: "Are containers more or less secure than VMs?" Answer: less isolated by default (shared kernel), but with proper hardening (Lesson 7) the gap narrows significantly.</aside>
   </section>
 
   <section>
-    <h2>The Apartment Building Analogy</h2>
+    <h2>How Docker Solves It <span class="tag tag-green">kernel-level</span></h2>
     <div class="card-grid cols-2">
       <div class="card">
-        <div class="card-title" style="color: var(--warn);">Virtual Machines = Houses</div>
+        <div class="card-title">Namespaces &mdash; What You Can See</div>
         <ul>
-          <li>Each house has its own foundation, plumbing, electrical, heating</li>
-          <li>Complete isolation</li>
-          <li>Extremely expensive to replicate</li>
+          <li><strong>PID</strong> &mdash; container sees only its own processes</li>
+          <li><strong>NET</strong> &mdash; own IP address, ports, routing table</li>
+          <li><strong>MNT</strong> &mdash; own filesystem view</li>
+          <li><strong>UTS</strong> &mdash; own hostname</li>
+          <li><strong>IPC</strong> &mdash; own shared memory segments</li>
+          <li><strong>USER</strong> &mdash; UID 0 in container != UID 0 on host</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">Containers = Apartments</div>
+        <div class="card-title">cgroups &mdash; What You Can Use</div>
         <ul>
-          <li>Share the building's foundation (kernel) and infrastructure</li>
-          <li>Each unit has private space (filesystem, processes, network)</li>
-          <li>Efficient — shared infrastructure, independent living</li>
+          <li><strong>Memory</strong> &mdash; cap at 2GB, OOM-killed if exceeded</li>
+          <li><strong>CPU</strong> &mdash; limit to 1.5 cores</li>
+          <li><strong>I/O</strong> &mdash; throttle disk read/write rates</li>
+          <li><strong>PIDs</strong> &mdash; cap process count (prevent fork bombs)</li>
         </ul>
+        <p style="margin-top: 8px; color: var(--accent); font-size: 0.65em;">
+          Namespaces = isolation. cgroups = resource limits.
+        </p>
       </div>
     </div>
-    <p style="font-size: 0.7em; color: var(--muted); margin-top: 14px;">
-      Trade-off: if the building's foundation has a crack (kernel vulnerability), it affects every apartment.
-    </p>
-    <aside class="notes">Docker didn't invent containers. Linux has had namespaces and cgroups since 2008. Docker made them accessible and standardized the format (OCI).</aside>
+    <aside class="notes">This is the "Docker is not a VM" explanation. Docker doesn't emulate hardware. It asks the Linux kernel to create isolated views (namespaces) and enforce resource budgets (cgroups). The container shares the host kernel. That's why a container with Alpine Linux can run on an Ubuntu host.</aside>
+  </section>
+
+  <section>
+    <h2>What Docker Actually Gives You</h2>
+    <ul class="checklist">
+      <li>Ship the entire runtime &mdash; Python, CUDA, system libs &mdash; as one artifact</li>
+      <li>Dev laptop = CI server = production &mdash; same binary everywhere</li>
+      <li>No "works on my machine" &mdash; the machine IS the container</li>
+      <li>Start in milliseconds, not minutes</li>
+      <li>Run 10 services on one laptop without conflicts</li>
+      <li>ML-specific: pin CUDA version, PyTorch build, and Python version per project</li>
+    </ul>
+    <aside class="notes">The ML-specific benefit is the strongest argument: CUDA + cuDNN + PyTorch + Python version combinations are a combinatorial nightmare. Docker eliminates this entirely. One Dockerfile = one reproducible environment.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 2: Docker Architecture                          -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 2: Docker Architecture                           -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">02</div>
     <h2>Docker Architecture</h2>
     <p style="color: #aaa; font-size: 0.8em;">What actually runs when you type <code>docker run</code></p>
+    <aside class="notes">Most engineers can't explain what happens between typing "docker run" and their process starting. This lesson covers the full chain: CLI, daemon, containerd, runc.</aside>
   </section>
 
   <section>
-    <h2>The Client → Daemon → Runtime Stack</h2>
-    <div class="flow" style="margin: 24px 0;">
-      <div class="flow-box"><strong>CLI</strong><br><span style="font-size:0.75em;color:#aaa;">REST call</span></div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box"><strong>dockerd</strong><br><span style="font-size:0.75em;color:#aaa;">daemon</span></div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box"><strong>containerd</strong><br><span style="font-size:0.75em;color:#aaa;">lifecycle mgr</span></div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box"><strong>runc</strong><br><span style="font-size:0.75em;color:#aaa;">OCI runtime</span></div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box" style="border-color: var(--accent);"><strong>Linux kernel</strong><br><span style="font-size:0.75em;color:var(--accent);">syscalls</span></div>
+    <h2>The Component Chain</h2>
+    <div class="flow" style="justify-content: center; margin: 20px 0;">
+      <div class="flow-box">docker CLI</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">dockerd (daemon)</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">containerd</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">runc</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">Your Process</div>
     </div>
+    <table class="compare" style="margin-top: 16px;">
+      <tr><th>Component</th><th>Role</th><th>OCI Standard</th></tr>
+      <tr><td><code>docker CLI</code></td><td>Translates commands to REST API calls</td><td>&mdash;</td></tr>
+      <tr><td><code>dockerd</code></td><td>Builds images, manages volumes/networks</td><td>&mdash;</td></tr>
+      <tr><td><code>containerd</code></td><td>Container lifecycle (pull, start, stop)</td><td>CRI runtime</td></tr>
+      <tr><td><code>runc</code></td><td>Creates namespaces + cgroups, starts process</td><td>OCI runtime</td></tr>
+    </table>
+    <aside class="notes">Interview insight: Kubernetes doesn't use Docker. It talks directly to containerd (or CRI-O). The "dockershim" was removed in K8s 1.24. But your Dockerfiles and images work everywhere because they follow OCI standards. This is a common senior-level interview question.</aside>
+  </section>
+
+  <section>
+    <h2>What Happens During <code>docker run</code></h2>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">1. Pull</div>
+          <div class="ts-desc">Download image layers from registry</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">2. Create</div>
+          <div class="ts-desc">Allocate filesystem, network, config</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">3. Start</div>
+          <div class="ts-desc">runc creates namespaces + cgroups</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">4. Execute</div>
+          <div class="ts-desc">Your CMD/ENTRYPOINT runs as PID 1</div>
+        </div>
+      </div>
+    </div>
+    <pre><code class="language-bash"># See the full chain in action
+docker run --rm python:3.12-slim python -c "print('hello')"
+
+# Behind the scenes:
+# 1. CLI sends POST /containers/create to dockerd
+# 2. dockerd asks containerd to prepare rootfs from image layers
+# 3. containerd asks runc to set up namespaces + cgroups
+# 4. runc exec's python with PID 1 inside the new namespace
+# 5. "hello" printed to stdout, process exits, container removed (--rm)</code></pre>
+    <aside class="notes">runc does the actual kernel-level work: clone() with CLONE_NEWPID, CLONE_NEWNS, CLONE_NEWNET flags to create namespaces, then writes to /sys/fs/cgroup to set resource limits. Your process is the first process in that new namespace, so it gets PID 1.</aside>
+  </section>
+
+  <section>
+    <h2>Why PID 1 Matters <span class="tag tag-red">critical</span></h2>
     <div class="card-grid cols-2">
       <div class="card">
-        <div class="card-title">Key fact</div>
-        <p>The CLI communicates via <strong>Unix socket</strong> (<code>/var/run/docker.sock</code>). The daemon and CLI don't need to be on the same machine.</p>
+        <div class="card-title">Shell Form (BAD)</div>
+        <p><code>CMD python main.py</code></p>
+        <p style="margin-top: 8px;">Runs as <code>/bin/sh -c "python main.py"</code>. Shell is PID 1. Shell doesn't forward SIGTERM to Python. <code>docker stop</code> waits 10s then SIGKILL.</p>
+        <p style="color: var(--warn); margin-top: 6px;">No graceful shutdown. Requests dropped.</p>
       </div>
       <div class="card">
-        <div class="card-title">Why Kubernetes "dropped Docker" in 2021</div>
-        <p>K8s uses <strong>containerd directly</strong>, skipping Docker's daemon layer. Docker was never required — it was just one path to containerd.</p>
+        <div class="card-title">Exec Form (GOOD)</div>
+        <p><code>CMD ["python", "main.py"]</code></p>
+        <p style="margin-top: 8px;">Python IS PID 1. Receives SIGTERM directly. Can flush caches, close DB connections, finish in-flight requests.</p>
+        <p style="color: var(--accent); margin-top: 6px;">Graceful shutdown. Zero dropped requests.</p>
       </div>
     </div>
-    <aside class="notes">runc starts the container then exits. containerd-shim keeps it alive after runc exits — so you can upgrade containerd without killing running containers.</aside>
-  </section>
-
-  <section>
-    <h2>Three Linux Kernel Primitives</h2>
-    <div class="card-grid cols-3">
-      <div class="card">
-        <div class="card-title">Namespaces</div>
-        <p><strong>What a container sees</strong></p>
-        <ul>
-          <li><code>pid</code> — process IDs</li>
-          <li><code>net</code> — network stack</li>
-          <li><code>mnt</code> — filesystem</li>
-          <li><code>uts</code> — hostname</li>
-          <li><code>ipc</code> — shared memory</li>
-          <li><code>user</code> — UID/GID</li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="card-title">cgroups v2</div>
-        <p><strong>How much it uses</strong></p>
-        <ul>
-          <li>Memory caps → OOM killer</li>
-          <li>CPU quota</li>
-          <li>I/O bandwidth</li>
-          <li>Exit code 137 = killed by OOM</li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="card-title">OverlayFS</div>
-        <p><strong>Copy-on-write filesystem</strong></p>
-        <ul>
-          <li>Read-only image layers stacked</li>
-          <li>Writable container layer on top</li>
-          <li>Modified files copied up</li>
-          <li>Deleted on container removal</li>
-        </ul>
-      </div>
-    </div>
-    <aside class="notes">On macOS, there's a hidden Linux VM (Apple Virtualization framework) running underneath everything — hence the extra I/O latency for file sharing in dev.</aside>
+    <aside class="notes">This is a favorite interview question: "What's the difference between shell form and exec form in Docker?" The answer is signal handling. In production ML services, dropping inference requests during deploys is unacceptable. Always use exec form.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 3: Images and Layers                            -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 3: Images and Layers                             -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">03</div>
     <h2>Images and Layers</h2>
-    <p style="color: #aaa; font-size: 0.8em;">The packaging model — content-addressable, shared, versioned</p>
+    <p style="color: #aaa; font-size: 0.8em;">The packaging model &mdash; how images are built, stored, and shared</p>
+    <aside class="notes">Understanding layers is the foundation for writing efficient Dockerfiles. Every performance optimization in Lesson 4 depends on understanding this lesson.</aside>
   </section>
 
   <section>
-    <h2>What IS a Docker Image?</h2>
-    <p style="font-size: 0.8em; color: #ddd;">A stack of <strong>read-only filesystem layers</strong>, each identified by a SHA256 digest. Together they form a complete filesystem snapshot.</p>
-    <div class="card-grid cols-2" style="margin-top: 16px;">
+    <h2>An Image Is a Stack of Layers</h2>
+    <p style="font-size: 0.75em; color: #ddd;">Each Dockerfile instruction creates one read-only layer. Layers are content-addressable (SHA-256 hash). Identical layers are shared across images.</p>
+    <pre><code class="language-docker">FROM python:3.12-slim        # Layer 1: base OS (~45MB)
+RUN apt-get update && ...     # Layer 2: system packages (~15MB)
+COPY requirements.txt .       # Layer 3: requirements file (~1KB)
+RUN pip install -r ...        # Layer 4: Python packages (~200MB)
+COPY . .                      # Layer 5: your code (~5MB)</code></pre>
+    <div class="card" style="margin-top: 12px;">
+      <div class="card-title">Content-Addressable Storage</div>
+      <p>If two images use the same <code>python:3.12-slim</code> base, they <strong>share</strong> those layers on disk and in the registry. Pull only downloads missing layers. This is why second pulls are fast.</p>
+    </div>
+    <aside class="notes">Layers are stored as tarballs identified by SHA-256 digests. The image manifest maps the sequence of layer digests. This is the OCI Image Specification. Interview tip: "How does Docker save disk space?" = content-addressable layer sharing.</aside>
+  </section>
+
+  <section>
+    <h2>The Union Filesystem</h2>
+    <div class="card-grid cols-2">
       <div class="card">
-        <div class="card-title">Creates a layer</div>
+        <div class="card-title">Read-Only Layers (Image)</div>
         <ul>
-          <li><code>RUN</code></li>
-          <li><code>COPY</code></li>
-          <li><code>ADD</code></li>
+          <li>Stacked bottom to top</li>
+          <li>Never modified after creation</li>
+          <li>Shared between all containers using this image</li>
+          <li>Stored once on disk</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">Metadata only (no layer)</div>
+        <div class="card-title">Writable Layer (Container)</div>
         <ul>
-          <li><code>ENV</code></li>
-          <li><code>EXPOSE</code></li>
-          <li><code>CMD</code> / <code>ENTRYPOINT</code></li>
-          <li><code>WORKDIR</code></li>
+          <li>Thin layer on top</li>
+          <li>Copy-on-write: read from image, write to container layer</li>
+          <li>Deleted when container is removed</li>
+          <li>Use volumes for persistent data</li>
         </ul>
       </div>
     </div>
-    <p style="font-size: 0.7em; color: var(--accent); margin-top: 14px;">
-      100 containers from the same image share the same read-only layers. Zero wasted disk space.
+    <p style="font-size: 0.72em; color: var(--warn); margin-top: 14px;">
+      10 containers from the same image = 1 copy of image layers + 10 thin writable layers. Efficient.
     </p>
+    <aside class="notes">Copy-on-write means reading a file uses the image layer (fast, shared). Writing creates a copy in the container layer. This is why writing to the container filesystem is slower than writing to a volume. For ML model weights, always use volumes, not the writable layer.</aside>
   </section>
 
   <section>
-    <h2>Layer Cache — Order Matters</h2>
-    <p style="font-size: 0.75em; color: #aaa;">If a layer changes, <strong>all subsequent layers are invalidated</strong>.</p>
-    <div class="card-grid cols-2" style="margin-top: 12px;">
-      <div class="card" style="border-color: var(--warn);">
-        <div class="card-title" style="color: var(--warn);">Bad — cache-busting order</div>
-        <pre><code class="language-dockerfile" style="font-size:0.8em;">COPY . .          # changes every commit
-RUN pip install   # always rebuilds
-</code></pre>
+    <h2>Layer Cache &mdash; The #1 Build Optimization</h2>
+    <p style="font-size: 0.75em; color: #ddd;">Docker caches each layer. If the instruction and all parent layers haven't changed, Docker reuses the cache. <strong>Order matters.</strong></p>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <div class="card-title" style="color: var(--warn);">BAD &mdash; Cache Busted Every Time</div>
+<pre style="font-size: 0.85em;"><code class="language-docker">COPY . .
+RUN pip install -r requirements.txt
+# ANY code change busts the cache
+# pip install runs EVERY build</code></pre>
       </div>
-      <div class="card" style="border-color: var(--accent);">
-        <div class="card-title">Good — cache-friendly order</div>
-        <pre><code class="language-dockerfile" style="font-size:0.8em;">COPY requirements.txt .   # rarely changes
-RUN pip install           # cached unless deps change
-COPY . .                  # source code last
-</code></pre>
+      <div class="card">
+        <div class="card-title" style="color: var(--accent);">GOOD &mdash; Cache-Friendly</div>
+<pre style="font-size: 0.85em;"><code class="language-docker">COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+# Code changes only rebuild COPY . .
+# pip install is cached!</code></pre>
       </div>
     </div>
-    <aside class="notes">Think of it like a stack of pancakes. Remove one, everything above it must be re-stacked.</aside>
+    <p style="font-size: 0.68em; color: var(--accent); margin-top: 12px;">
+      Rule: copy stable things first (dependencies), volatile things last (code).
+    </p>
+    <aside class="notes">The cache invalidation rule: if any instruction changes, ALL subsequent layers are rebuilt. That's why COPY requirements.txt BEFORE COPY . . saves minutes on every build. For ML projects with large deps (PyTorch ~2GB), this is the difference between 15-second and 10-minute builds.</aside>
   </section>
 
   <section>
-    <h2>Base Image Choice — Size Is a Real Cost</h2>
-    <table class="compare">
-      <thead>
-        <tr><th>Image</th><th>Size</th><th>CVEs (approx)</th><th>Best for</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>python:3.12</code></td>
-          <td style="color: var(--warn);">~1 GB</td>
-          <td style="color: var(--warn);">100+</td>
-          <td>Development, debugging</td>
-        </tr>
-        <tr style="background: rgba(0,212,170,0.05);">
-          <td><code>python:3.12-slim</code> <span class="tag tag-green">Recommended</span></td>
-          <td style="color: var(--accent);">~150 MB</td>
-          <td>~20</td>
-          <td>ML workloads, FastAPI, most Python apps</td>
-        </tr>
-        <tr>
-          <td><code>python:3.12-alpine</code></td>
-          <td>~50 MB</td>
-          <td>~5</td>
-          <td>Simple CLIs — <strong>not ML</strong> (musl libc breaks NumPy/SciPy)</td>
-        </tr>
-        <tr>
-          <td><code>gcr.io/distroless/python3</code></td>
-          <td>~30 MB</td>
-          <td>Minimal</td>
-          <td>Production-only, no shell (max security)</td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="font-size: 0.65em; color: var(--muted); margin-top: 10px;">
-      A 2 GB image takes 30–60s to pull. A 150 MB image takes ~5s. At scale, that's minutes of deploy lag.
-    </p>
+    <h2>Inspecting Images</h2>
+    <pre><code class="language-bash"># See layers and their sizes
+docker history my-api:v1
+
+# IMAGE        CREATED BY                                SIZE
+# abc123       CMD ["uvicorn" ...]                       0B
+# def456       COPY . .                                  5.2MB
+# 789012       RUN pip install --no-cache-dir ...        198MB  &lt;-- biggest layer
+# aaa111       COPY requirements.txt .                   1.2KB
+# bbb222       RUN apt-get update &amp;&amp; ...                 15MB
+# ccc333       /bin/sh -c #(nop) FROM python:3.12-slim   45MB
+
+# Dive deeper with dive (third-party tool)
+dive my-api:v1
+# Shows each layer's filesystem changes and wasted space</code></pre>
+    <aside class="notes">The "dive" tool is excellent for finding wasted space in images. Common findings: apt caches not cleaned, pip caches left behind, test files copied into the image, .git directory included. All of these are addressed by a proper .dockerignore and multi-stage builds.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 4: Writing Dockerfiles                          -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 4: Writing Dockerfiles                           -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">04</div>
     <h2>Writing Dockerfiles</h2>
-    <p style="color: #aaa; font-size: 0.8em;">From bad to production-grade — 7 failure modes and how to fix them</p>
+    <p style="color: #aaa; font-size: 0.8em;">From bad to production-grade &mdash; every line has implications</p>
+    <aside class="notes">This is the most practical lesson. We'll take a naive Dockerfile and systematically improve it. The production checklist at the end is your interview reference card.</aside>
   </section>
 
   <section>
-    <h2>The Bad Dockerfile</h2>
-    <pre><code class="language-dockerfile"># Every problem in 6 lines
-FROM python:3.12                          # 1GB, 100+ CVEs
+    <h2>Multi-Stage Builds <span class="tag tag-green">essential</span></h2>
+    <p style="font-size: 0.72em; color: #ddd;">Build tools (gcc, g++, headers) should never ship in production images. Multi-stage builds separate build-time from runtime.</p>
+    <pre><code class="language-docker"># Stage 1: Builder — has gcc, g++, pip compile tools
+FROM python:3.12-slim AS builder
 WORKDIR /app
-COPY . .                                  # code first → cache miss every commit
-RUN pip install -r requirements.txt       # rebuilds on every code change
-RUN apt-get update && apt-get install -y curl vim htop   # dev tools in prod
-CMD python main.py                        # shell form → no SIGTERM handling</code></pre>
-    <div class="card-grid cols-3" style="margin-top: 12px;">
-      <div class="card"><div class="card-title" style="color:var(--warn);">Problem 1</div><p>Wrong base image — massive size &amp; CVE surface</p></div>
-      <div class="card"><div class="card-title" style="color:var(--warn);">Problem 2</div><p>COPY order busts cache on every code change</p></div>
-      <div class="card"><div class="card-title" style="color:var(--warn);">Problem 3</div><p>Shell form CMD breaks graceful shutdown</p></div>
-    </div>
-  </section>
-
-  <section>
-    <h2>The Production Dockerfile</h2>
-    <pre><code class="language-dockerfile">FROM python:3.12-slim-bookworm AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
-    python -m venv /opt/venv
+RUN apt-get update && apt-get install -y --no-install-recommends gcc g++ libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
-RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.12-slim-bookworm AS runtime
+# Stage 2: Runtime — only runtime libs + compiled packages
+FROM python:3.12-slim AS runtime
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 curl \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-WORKDIR /app
 RUN groupadd --gid 1000 appuser && useradd --uid 1000 --gid appuser appuser
 COPY --chown=appuser:appuser . .
 USER appuser
-HEALTHCHECK --interval=30s --timeout=5s \
-    CMD ["curl", "-f", "http://localhost:8000/health"]
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
-    <aside class="notes">Multi-stage build: builder has gcc and build tools. Runtime stage only has the venv. Stripping build tools can save 200-400MB.</aside>
+HEALTHCHECK --interval=30s --timeout=5s CMD ["curl", "-f", "http://localhost:8000/health"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+    <p style="font-size: 0.68em; color: var(--accent);">Image drops from ~1.2GB to ~200MB. Build tools stay in builder stage.</p>
+    <aside class="notes">The builder pattern is standard for Python ML services. gcc/g++ are needed to compile numpy, pandas, and other C extensions. But they're not needed at runtime. COPY --from=builder copies only the compiled virtual environment. This is a must-know for interviews.</aside>
   </section>
 
   <section>
-    <h2>The Production Dockerfile Checklist</h2>
+    <h2>BuildKit &mdash; Cache Mounts &amp; Secret Mounts</h2>
+    <pre><code class="language-docker"># syntax=docker/dockerfile:1
+
+# Cache mount: persist pip's download cache across builds
+# NOT included in the image — only on the build host
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+# First build: 2 min. Add one new package: 15 sec.
+
+# Secret mount: use secrets during build without leaking
+# Build: docker build --secret id=pip_token,src=./pip-token.txt .
+RUN --mount=type=secret,id=pip_token \
+    pip install --extra-index-url \
+    https://token:$(cat /run/secrets/pip_token)@pypi.internal/simple/ \
+    -r requirements.txt
+# Secret NOT stored in image layers. docker history won't show it.</code></pre>
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-title">.dockerignore &mdash; non-negotiable</div>
+      <p>Exclude <code>.git</code>, <code>__pycache__</code>, <code>.venv</code>, <code>*.pt</code>, <code>*.onnx</code>, <code>models/</code>, <code>data/</code>, <code>.env</code>. Without it, COPY . . sends gigabytes of model weights to the build daemon.</p>
+    </div>
+    <aside class="notes">BuildKit cache mounts are a game-changer for CI. Without them, pip downloads all packages from scratch on every build. With them, only new/changed packages are downloaded. Secret mounts prevent the #1 Docker security mistake: leaking credentials into image layers.</aside>
+  </section>
+
+  <section>
+    <h2>Production Dockerfile Checklist <span class="tag tag-blue">interview-ready</span></h2>
     <ul class="checklist">
-      <li>Slim or distroless base image (not full Debian)</li>
-      <li>Multi-stage build — build tools excluded from final image</li>
-      <li><code>pip install --no-cache-dir</code> — saves 50–200 MB</li>
-      <li>Dependencies copied and installed <em>before</em> application code</li>
-      <li>Non-root user created and activated before <code>CMD</code></li>
-      <li>Exec form <code>CMD ["python", ...]</code> — PID 1 receives SIGTERM directly</li>
-      <li><code>HEALTHCHECK</code> defined</li>
-      <li>Secrets via BuildKit mounts, never <code>ENV</code> or <code>ARG</code></li>
-      <li><code>.dockerignore</code> excludes <code>.git</code>, <code>__pycache__</code>, <code>.env</code>, test data</li>
+      <li>Specific, pinned base image: <code>python:3.12.7-slim-bookworm</code></li>
+      <li>Set <code>PYTHONUNBUFFERED=1</code> and <code>PYTHONDONTWRITEBYTECODE=1</code></li>
+      <li>COPY <code>requirements.txt</code> before <code>COPY . .</code> for cache efficiency</li>
+      <li>Use <code>--no-cache-dir</code> for pip (saves 50-200MB)</li>
+      <li>Multi-stage build to separate build-time and runtime dependencies</li>
+      <li>Create and switch to a non-root user</li>
+      <li>Exec form for CMD: <code>["python", "main.py"]</code> not <code>python main.py</code></li>
+      <li>Add a HEALTHCHECK instruction</li>
+      <li>Comprehensive .dockerignore (exclude .git, models, data, .env)</li>
+      <li>Clean apt caches in the same RUN layer (<code>rm -rf /var/lib/apt/lists/*</code>)</li>
     </ul>
-    <aside class="notes">ENV and ARG values are visible in docker inspect and docker history — anyone with image access can read them. Use --mount=type=secret for build-time secrets.</aside>
+    <aside class="notes">If an interviewer asks you to review a Dockerfile, go through this checklist systematically. Missing any of these items in production is a red flag. The most commonly missed: non-root user, HEALTHCHECK, and .dockerignore.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 5: Running Containers                           -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 5: Running Containers                            -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">05</div>
     <h2>Running Containers</h2>
     <p style="color: #aaa; font-size: 0.8em;">Lifecycle, networking, volumes, and resource limits</p>
+    <aside class="notes">Building images is half the story. Running them involves ports, networks, volumes, memory limits, restart policies. Each maps to a docker run flag.</aside>
   </section>
 
   <section>
     <h2>Container Lifecycle</h2>
-    <div class="flow" style="justify-content: center; margin: 20px 0; font-size: 0.85em;">
-      <div class="flow-box">created</div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box" style="border-color:var(--accent);">running</div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box">stopped</div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-box" style="border-color:var(--warn);">removed</div>
+    <div class="flow" style="justify-content: center; margin: 16px 0;">
+      <div class="flow-box">docker create</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">CREATED</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">RUNNING</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--warn);">STOPPED</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">REMOVED</div>
     </div>
-    <div class="card-grid cols-2">
-      <div class="card">
-        <div class="card-title">Stopping</div>
-        <ul>
-          <li><code>docker stop</code> → SIGTERM → waits 10s → SIGKILL</li>
-          <li><code>docker kill</code> → SIGKILL immediately</li>
-          <li>Exit code 143 = graceful shutdown (SIGTERM)</li>
-          <li>Exit code 137 = OOM kill (SIGKILL)</li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="card-title">Restart Policies</div>
-        <ul>
-          <li><code>no</code> — never restart (default)</li>
-          <li><code>on-failure[:n]</code> — on non-zero exit</li>
-          <li><code>always</code> — even after manual stop</li>
-          <li><code>unless-stopped</code> — not after explicit stop ← use this</li>
-        </ul>
-      </div>
-    </div>
+    <pre><code class="language-bash"># Run (create + start), detached, with a name
+docker run -d --name my-api my-image:v1
+
+# Graceful stop: SIGTERM, wait 10s, then SIGKILL
+docker stop my-api
+
+# Force kill immediately (no graceful shutdown)
+docker kill my-api
+
+# Run and auto-remove on exit (great for one-off ML tasks)
+docker run --rm my-image:v1 python -c "print('inference done')"
+
+# Check state
+docker inspect my-api --format '{{.State.Status}}'</code></pre>
+    <aside class="notes">docker run = docker create + docker start. The --rm flag is essential for batch ML jobs (data processing, evaluation scripts) so you don't accumulate stopped containers. For long-running services, use restart policies instead.</aside>
   </section>
 
   <section>
-    <h2>Networking — Use Custom Bridge Networks</h2>
-    <div class="card" style="border-color: var(--warn); margin-bottom: 12px;">
-      <div class="card-title" style="color: var(--warn);">Default bridge network</div>
-      <p>No DNS — containers can only reach each other by IP. IPs change on restart. Scripts break.</p>
-    </div>
-    <div class="card" style="border-color: var(--accent);">
-      <div class="card-title">Custom bridge network</div>
-      <p>Automatic DNS by container name. <code>redis://redis:6379</code> just works.</p>
-    </div>
-    <pre style="margin-top: 12px;"><code class="language-bash">docker network create ml-services
-docker run -d --name redis --network ml-services redis:7-alpine
-docker run -d --name api  --network ml-services -p 8080:8000 my-api:v1
-# Inside api container: redis is reachable as hostname "redis"</code></pre>
-  </section>
-
-  <section>
-    <h2>Storage — Three Types</h2>
+    <h2>Networking <span class="tag tag-blue">always custom bridge</span></h2>
     <table class="compare">
-      <thead>
-        <tr><th>Type</th><th>Managed by</th><th>Persists?</th><th>Best for</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Named volume</strong></td>
-          <td>Docker</td>
-          <td style="color: var(--accent);">Yes</td>
-          <td>Databases, model weights, production data</td>
-        </tr>
-        <tr>
-          <td><strong>Bind mount</strong></td>
-          <td>Host filesystem</td>
-          <td style="color: var(--accent);">Yes</td>
-          <td>Dev hot-reload, sharing host files</td>
-        </tr>
-        <tr>
-          <td><strong>tmpfs</strong></td>
-          <td>Host RAM</td>
-          <td style="color: var(--warn);">No</td>
-          <td>Temp files, in-memory secrets, /tmp</td>
-        </tr>
-      </tbody>
+      <tr><th>Network Type</th><th>DNS</th><th>Isolation</th><th>Use Case</th></tr>
+      <tr><td>Default bridge</td><td style="color: var(--warn);">No</td><td>Minimal</td><td>Avoid</td></tr>
+      <tr><td style="color: var(--accent);">Custom bridge</td><td style="color: var(--accent);">Yes</td><td style="color: var(--accent);">Per-network</td><td style="color: var(--accent);">Production</td></tr>
+      <tr><td>Host</td><td>N/A</td><td>None</td><td>Performance-critical</td></tr>
+      <tr><td>None</td><td>N/A</td><td>Complete</td><td>Batch jobs</td></tr>
     </table>
-    <pre style="margin-top: 12px;"><code class="language-bash">docker run -d -v model-cache:/app/cache my-api:v1         # named volume
-docker run -d -v $(pwd)/src:/app/src my-api:v1             # bind mount (dev)
-docker run -d --tmpfs /tmp:size=100m my-api:v1             # tmpfs</code></pre>
+    <pre><code class="language-bash"># Create a custom network
+docker network create ml-services
+
+# Redis resolves by NAME on custom networks
+docker run -d --name redis --network ml-services redis:7-alpine
+docker run -d --name api --network ml-services -p 8080:8000 my-api:v1
+
+# Inside API container: redis:6379 just works (DNS resolution)
+docker exec api python -c "import redis; r = redis.Redis(host='redis'); r.ping()"</code></pre>
+    <aside class="notes">The default bridge network is the #1 networking mistake. It has no DNS, so containers can only find each other by IP address, which changes on every restart. Custom bridge networks solve this. In interviews, always mention custom networks when discussing Docker networking.</aside>
+  </section>
+
+  <section>
+    <h2>Volumes &amp; Resource Limits</h2>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <div class="card-title">Named Volume</div>
+        <p>Docker-managed storage. Survives container removal. Use for DB data, model caches.</p>
+        <p style="font-family: monospace; font-size: 0.65em; color: var(--accent); margin-top: 6px;">-v model-weights:/models:ro</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Bind Mount</div>
+        <p>Maps host directory into container. Great for dev hot-reload.</p>
+        <p style="font-family: monospace; font-size: 0.65em; color: var(--accent2); margin-top: 6px;">-v ./src:/app/src</p>
+      </div>
+      <div class="card">
+        <div class="card-title">tmpfs</div>
+        <p>In-memory only. Never touches disk. Use for secrets, temp scratch.</p>
+        <p style="font-family: monospace; font-size: 0.65em; color: var(--warn); margin-top: 6px;">--tmpfs /tmp:size=100m</p>
+      </div>
+    </div>
+    <pre><code class="language-bash"># Resource limits for ML services
+docker run -d \
+  --memory 2g \                  # OOM-killed if exceeded
+  --cpus 2.0 \                   # max 2 CPU cores
+  --gpus all \                   # GPU access (NVIDIA Container Toolkit)
+  --restart unless-stopped \     # restart on crash, not on manual stop
+  my-api:v1</code></pre>
+    <aside class="notes">Interview tip: "What happens if a container exceeds its memory limit?" It gets OOM-killed (exit code 137). "What about CPU?" It gets throttled, not killed. GPU passthrough requires the NVIDIA Container Toolkit and --gpus flag. Named volumes are the right choice for ML model weights.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 6: Docker Compose                               -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 6: Docker Compose                                -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">06</div>
     <h2>Docker Compose</h2>
-    <p style="color: #aaa; font-size: 0.8em;">Multi-container stacks as declarative YAML</p>
+    <p style="color: #aaa; font-size: 0.8em;">Multi-container applications in a single YAML file</p>
+    <aside class="notes">Real ML systems have 5-20 containers. Managing them with individual docker run commands doesn't scale. Compose is the answer for single-host orchestration.</aside>
   </section>
 
   <section>
-    <h2>Anatomy of a Production Compose File</h2>
+    <h2>ML Inference Stack in One File</h2>
     <pre><code class="language-yaml">services:
   api:
     build: { context: ., target: runtime }
     ports: ["8080:8000"]
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://app:secret@postgres:5432/mldb
     depends_on:
-      redis:
-        condition: service_healthy      # waits for healthcheck to pass
+      redis:    { condition: service_healthy }
+      postgres: { condition: service_healthy }
     deploy:
-      resources:
-        limits: { memory: 2G, cpus: "2.0" }
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
+      resources: { limits: { memory: 2G, cpus: "2.0" } }
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s</code></pre>
+      interval: 10s
+    volumes: [redis-data:/data]
+
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: mldb, POSTGRES_USER: app, POSTGRES_PASSWORD: secret }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d mldb"]
+      interval: 10s
+    volumes: [pg-data:/var/lib/postgresql/data]
+
+volumes:
+  redis-data:
+  pg-data:</code></pre>
+    <aside class="notes">Key concept: depends_on with condition: service_healthy waits for the healthcheck to pass, not just the container to start. Without this, your API tries to connect to PostgreSQL before it's ready and crashes. This is the #1 Compose mistake in interviews.</aside>
   </section>
 
   <section>
-    <h2>Critical: <code>depends_on</code> vs <code>service_healthy</code></h2>
+    <h2>depends_on Done Right <span class="tag tag-red">common mistake</span></h2>
     <div class="card-grid cols-2">
-      <div class="card" style="border-color: var(--warn);">
-        <div class="card-title" style="color:var(--warn);"><code>depends_on: [redis]</code></div>
-        <p>Waits for container to <strong>start</strong>. Redis process may still be initializing. Your API gets <code>ConnectionRefused</code>.</p>
+      <div class="card">
+        <div class="card-title" style="color: var(--warn);">BAD &mdash; Container Start</div>
+<pre style="font-size: 0.85em;"><code class="language-yaml"># Only waits for container start
+# NOT service readiness!
+depends_on:
+  - postgres</code></pre>
+        <p style="margin-top: 6px;">PostgreSQL takes 2-5s to accept connections after the container starts. API crashes.</p>
       </div>
-      <div class="card" style="border-color: var(--accent);">
-        <div class="card-title"><code>condition: service_healthy</code></div>
-        <p>Waits for Redis healthcheck to <strong>pass</strong>. Requires a <code>HEALTHCHECK</code> defined on the dependency.</p>
-        <p style="color:var(--warn); margin-top:8px;">Without a healthcheck, Compose hangs indefinitely.</p>
+      <div class="card">
+        <div class="card-title" style="color: var(--accent);">GOOD &mdash; Health Check</div>
+<pre style="font-size: 0.85em;"><code class="language-yaml"># Waits for healthcheck to pass
+depends_on:
+  postgres:
+    condition: service_healthy</code></pre>
+        <p style="margin-top: 6px;">Compose polls the healthcheck. API starts only when PostgreSQL is actually ready.</p>
       </div>
     </div>
-    <div class="card" style="margin-top: 12px;">
-      <div class="card-title">Essential Commands</div>
-      <pre style="font-size:0.85em; margin:0;"><code class="language-bash">docker compose up -d          # start all services
-docker compose logs -f api    # follow api logs
-docker compose ps             # service status
-docker compose down           # stop + remove containers</code></pre>
+    <aside class="notes">If you use service_healthy but the dependency has no healthcheck defined, Compose waits forever. Always pair depends_on conditions with healthcheck definitions. Interview question: "How do you handle startup ordering in Docker Compose?" This is the answer.</aside>
+  </section>
+
+  <section>
+    <h2>Profiles, Overrides &amp; Watch</h2>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <div class="card-title">Profiles</div>
+        <p>Optional services. <code>profiles: ["debug"]</code> only runs with <code>--profile debug</code>. Use for pgAdmin, monitoring.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Override Files</div>
+        <p><code>compose.override.yml</code> auto-merges for dev. <code>compose.prod.yml</code> uses <code>-f</code> flag for production.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Compose Watch</div>
+        <p>File watching. <code>sync</code> for code, <code>rebuild</code> for deps, <code>sync+restart</code> for config changes.</p>
+      </div>
     </div>
+    <pre><code class="language-bash"># Essential daily commands
+docker compose up -d               # Start all services
+docker compose up -d --build       # Rebuild + start
+docker compose logs -f api         # Follow logs for one service
+docker compose down                # Stop + remove containers
+docker compose down -v             # Also delete volumes (destroys data!)
+docker compose up -d --scale worker=3  # Scale workers
+docker compose watch               # Dev mode with file watching</code></pre>
+    <aside class="notes">The override pattern is extremely common in production teams: compose.yml has shared config, compose.override.yml has dev settings (bind mounts, debug ports), compose.prod.yml has production settings (pinned images, resource limits). Compose Watch (2.22+) eliminates manual rebuilds during development.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 7: Container Security                           -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 7: Container Security                            -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">07</div>
     <h2>Container Security</h2>
-    <p style="color: #aaa; font-size: 0.8em;">Default containers are NOT production-safe</p>
+    <p style="color: #aaa; font-size: 0.8em;">Making containers production-safe &mdash; because defaults are NOT secure</p>
+    <aside class="notes">A default Docker container runs as root, has 14 Linux capabilities, a writable filesystem, and potentially hundreds of CVEs. This lesson fixes all of that.</aside>
   </section>
 
   <section>
-    <h2>What Default Docker Gives You</h2>
-    <div class="card-grid cols-2">
-      <div class="card" style="border-color: var(--warn);">
-        <div class="card-title" style="color:var(--warn);">Default (insecure)</div>
-        <ul>
-          <li>Running as <strong>root</strong> (UID 0)</li>
-          <li>14 Linux capabilities including <code>NET_RAW</code>, <code>SYS_CHROOT</code>, <code>SETUID</code></li>
-          <li>Writable filesystem</li>
-          <li>Setuid binaries can escalate privileges</li>
-          <li>Full base image with 100+ CVEs</li>
-        </ul>
-      </div>
-      <div class="card" style="border-color: var(--accent);">
-        <div class="card-title">Production Hardening</div>
-        <ul>
-          <li>Non-root user (UID 1000)</li>
-          <li>Drop all capabilities (<code>--cap-drop ALL</code>)</li>
-          <li>Read-only filesystem (<code>--read-only</code>)</li>
-          <li>No-new-privileges flag</li>
-          <li>Trivy CVE scan before push</li>
-          <li>Slim/distroless base image</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2>The Hardened Run Command</h2>
-    <pre><code class="language-bash">docker run -d \
-  --cap-drop ALL \                       # remove all 14 default capabilities
-  --read-only \                          # immutable filesystem
-  --tmpfs /tmp:size=100m \              # writable tmp in RAM
-  --tmpfs /app/logs:size=50m \          # writable logs in RAM
-  --security-opt no-new-privileges \    # block setuid escalation
-  --user 1000:1000 \                    # non-root
+    <h2>Defense in Depth <span class="tag tag-red">mandatory for prod</span></h2>
+    <pre><code class="language-bash"># The production-hardened docker run command
+docker run -d \
+  --user 1000:1000 \                   # Non-root user
+  --cap-drop ALL \                     # Drop ALL 14 default capabilities
+  --read-only \                        # Read-only filesystem
+  --tmpfs /tmp:size=100m \             # Writable tmpfs for temp files
+  --security-opt no-new-privileges \   # Prevent privilege escalation
+  --memory 2g \                        # Memory limit
+  --cpus 2.0 \                         # CPU limit
   my-api:v1</code></pre>
-    <div class="card-grid cols-2" style="margin-top: 12px;">
+    <div class="card-grid cols-2" style="margin-top: 14px;">
       <div class="card">
-        <div class="card-title">Scanning with Trivy</div>
-        <pre style="font-size:0.85em; margin:0;"><code class="language-bash">trivy image my-api:v1
-trivy image --exit-code 1 \
-  --severity HIGH,CRITICAL my-api:v1</code></pre>
+        <div class="card-title">Non-Root User</div>
+        <p>Root in container = potential root on host (via kernel exploit). Use <code>USER appuser</code> in Dockerfile.</p>
       </div>
       <div class="card">
-        <div class="card-title">Secrets — never in ENV</div>
-        <p style="font-size:0.7em;"><code>docker inspect</code> and <code>docker history</code> expose all ENV values to anyone with image access. Use BuildKit secret mounts.</p>
+        <div class="card-title">Drop Capabilities</div>
+        <p>Default containers get NET_RAW, SYS_CHROOT, SETUID. Most apps need <strong>zero</strong> capabilities.</p>
       </div>
     </div>
+    <aside class="notes">Interview gold: "How do you secure a Docker container?" Non-root + cap-drop ALL + read-only + no-new-privileges is the minimum. Being able to explain each layer shows senior-level security awareness. Mention that containers share the host kernel, so a kernel exploit + root = host compromise.</aside>
+  </section>
+
+  <section>
+    <h2>Image Scanning &amp; Secrets</h2>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <div class="card-title">Scan with Trivy</div>
+<pre style="font-size: 0.85em;"><code class="language-bash"># Scan for CVEs
+trivy image my-api:v1
+
+# Fail CI on HIGH/CRITICAL
+trivy image --exit-code 1 \
+  --severity HIGH,CRITICAL \
+  my-api:v1
+
+# Scan Dockerfile for misconfig
+trivy config Dockerfile</code></pre>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color: var(--warn);">Never Put Secrets in ENV</div>
+<pre style="font-size: 0.85em;"><code class="language-bash"># Anyone can see ENV values:
+docker inspect my-api \
+  --format '{{json .Config.Env}}'
+# "DB_PASSWORD=exposed!"
+
+# Use secret mounts instead:
+docker run -v /secure/db-pass:\
+/run/secrets/db_password:ro \
+  my-api:v1</code></pre>
+      </div>
+    </div>
+    <ul class="checklist" style="margin-top: 14px;">
+      <li>Scan images in CI &mdash; fail on HIGH/CRITICAL CVEs</li>
+      <li>Use BuildKit secret mounts for build-time secrets</li>
+      <li>Mount secret files at runtime, never use ENV/ARG for passwords</li>
+      <li class="bad">docker inspect shows all ENV variables to anyone with image access</li>
+    </ul>
+    <aside class="notes">The ENV secret leak is the most common Docker security mistake. docker inspect, docker history, and even the image manifest expose ENV and ARG values. In CI, always use Trivy or Snyk to gate deployments. In production, use Kubernetes Secrets or a vault.</aside>
+  </section>
+
+  <section>
+    <h2>Security Checklist</h2>
+    <ul class="checklist">
+      <li>Run as non-root user (USER directive in Dockerfile)</li>
+      <li>Drop all capabilities (<code>--cap-drop ALL</code>), add back only what's needed</li>
+      <li>Read-only filesystem (<code>--read-only</code>) with tmpfs for writable paths</li>
+      <li>Enable no-new-privileges (<code>--security-opt no-new-privileges</code>)</li>
+      <li>Scan images in CI with Trivy (fail on HIGH/CRITICAL)</li>
+      <li>Use minimal base images (slim or distroless) to reduce attack surface</li>
+      <li>Never put secrets in ENV, ARG, or COPY</li>
+      <li>Pin base images by digest for reproducibility</li>
+      <li>Rebuild weekly to pick up base image security patches</li>
+    </ul>
+    <aside class="notes">This checklist is your interview reference. Default seccomp and AppArmor profiles are applied automatically by Docker and block ~44 dangerous syscalls. Custom profiles are rarely needed unless you're in a highly regulated environment. The default + this checklist covers 95% of use cases.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 8: Registries and CI/CD                         -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 8: Registries and CI/CD                          -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">08</div>
-    <h2>Registries &amp; CI/CD</h2>
-    <p style="color: #aaa; font-size: 0.8em;">Build → scan → push → sign — automated on every merge</p>
+    <h2>Image Registries &amp; CI/CD</h2>
+    <p style="color: #aaa; font-size: 0.8em;">Store, distribute, scan, sign &mdash; the image supply chain</p>
+    <aside class="notes">Images need to get from your laptop to production servers. This lesson covers registries, tagging strategies, multi-arch builds, and CI pipeline design.</aside>
   </section>
 
   <section>
-    <h2>The CI/CD Image Pipeline</h2>
-    <div class="timeline" style="margin: 24px 0;">
-      <div class="timeline-step">
-        <div class="ts-box">
-          <div class="ts-label">Checkout</div>
-          <div class="ts-desc">git clone + secrets via OIDC</div>
-        </div>
-      </div>
+    <h2>Registry Landscape</h2>
+    <table class="compare">
+      <tr><th>Category</th><th>Registry</th><th>Notes</th></tr>
+      <tr><td>Public</td><td>Docker Hub</td><td>Default. Rate-limited (100 pulls/6h anonymous)</td></tr>
+      <tr><td>Public</td><td>ghcr.io</td><td>GitHub Container Registry. Free for public repos</td></tr>
+      <tr><td>Cloud</td><td>ECR (AWS)</td><td>IAM auth. Tight EKS integration</td></tr>
+      <tr><td>Cloud</td><td>Artifact Registry (GCP)</td><td>Regional replication. Replaces GCR</td></tr>
+      <tr><td>Cloud</td><td>ACR (Azure)</td><td>AAD integration</td></tr>
+      <tr><td>Self-hosted</td><td>Harbor</td><td>CNCF. Scanning, signing, replication</td></tr>
+    </table>
+    <div class="card" style="margin-top: 14px;">
+      <div class="card-title" style="color: var(--warn);">Never Deploy :latest</div>
+      <p>The <code>:latest</code> tag is mutable &mdash; pushing overwrites it. Two servers pulling at different times get different images. Use immutable tags: semver (<code>v1.2.3</code>) + git SHA (<code>abc123f</code>).</p>
+    </div>
+    <aside class="notes">Tagging strategy matters for rollbacks and audits. Use semver for human readability, git SHA for traceability to exact commit, and digest (sha256:...) for maximum reproducibility. Interview tip: "Why not :latest?" = mutable, untraceable, unreproducible.</aside>
+  </section>
+
+  <section>
+    <h2>Multi-Architecture Builds</h2>
+    <p style="font-size: 0.72em; color: #ddd;">Dev on Apple Silicon (arm64). CI on x86 runners. Prod on AWS Graviton (arm64). One tag, all architectures.</p>
+    <pre><code class="language-bash"># Create multi-arch builder
+docker buildx create --name multiarch --driver docker-container --use
+
+# Build for both architectures and push
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t myuser/my-api:v1.2.3 \
+  --push .
+
+# Docker creates a manifest list:
+# myuser/my-api:v1.2.3 -> linux/amd64: sha256:aaa...
+#                       -> linux/arm64: sha256:bbb...
+# "docker pull" auto-selects the right architecture</code></pre>
+    <aside class="notes">Graviton instances are 20-40% cheaper than x86 on AWS. Multi-arch builds let you use them without separate Dockerfiles. In CI, arm64 builds use QEMU emulation (slow) or native arm64 runners (fast). GitHub Actions now offers arm64 runners.</aside>
+  </section>
+
+  <section>
+    <h2>CI Pipeline: Build &rarr; Scan &rarr; Push &rarr; Sign</h2>
+    <div class="timeline">
       <div class="timeline-step">
         <div class="ts-box">
           <div class="ts-label">Build</div>
-          <div class="ts-desc">docker buildx (multi-arch)</div>
+          <div class="ts-desc">BuildKit + layer cache<br>(GHA or registry cache)</div>
         </div>
       </div>
       <div class="timeline-step">
-        <div class="ts-box" style="border-color: var(--warn);">
-          <div class="ts-label" style="color:var(--warn);">Scan</div>
-          <div class="ts-desc">Trivy — fail on HIGH/CRITICAL</div>
+        <div class="ts-box">
+          <div class="ts-label">Test</div>
+          <div class="ts-desc">Unit + integration<br>tests in container</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Scan</div>
+          <div class="ts-desc">Trivy: fail on<br>HIGH/CRITICAL</div>
         </div>
       </div>
       <div class="timeline-step">
         <div class="ts-box">
           <div class="ts-label">Push</div>
-          <div class="ts-desc">ECR / Artifact Registry</div>
+          <div class="ts-desc">Multi-arch to<br>cloud registry</div>
         </div>
       </div>
       <div class="timeline-step">
-        <div class="ts-box" style="border-color: var(--accent);">
-          <div class="ts-label" style="color:var(--accent);">Sign</div>
-          <div class="ts-desc">cosign (keyless OIDC)</div>
+        <div class="ts-box">
+          <div class="ts-label">Sign</div>
+          <div class="ts-desc">cosign for<br>provenance</div>
         </div>
       </div>
     </div>
-    <div class="card-grid cols-2">
+    <div class="card-grid cols-2" style="margin-top: 14px;">
       <div class="card">
-        <div class="card-title">Tagging strategy</div>
-        <p><code>v1.2.3</code> + <code>abc123f</code> (git SHA) + branch name</p>
-        <p style="color:var(--warn); margin-top:6px;">Never deploy <code>:latest</code> to production — it's mutable.</p>
+        <div class="card-title">OIDC Auth (No Long-Lived Keys)</div>
+        <p>GitHub proves identity to GCP/AWS via short-lived tokens. No service account keys stored as secrets. Gold standard for CI/CD.</p>
       </div>
       <div class="card">
-        <div class="card-title">Multi-arch builds</div>
-        <p>One tag serves <code>linux/amd64</code> and <code>linux/arm64</code> via a manifest list. Pull transparently routes to the right architecture.</p>
+        <div class="card-title">Image Signing (cosign)</div>
+        <p>Verify WHO built the image, WHEN, from WHAT repo. Kubernetes can reject unsigned images via policy controller.</p>
       </div>
     </div>
-  </section>
-
-  <section>
-    <h2>GitHub Actions — Build, Scan, Push</h2>
-    <pre><code class="language-yaml">- uses: docker/setup-buildx-action@v3
-
-- uses: docker/build-push-action@v5
-  with:
-    platforms: linux/amd64,linux/arm64
-    tags: ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.version.outputs.tag }}
-    cache-from: type=gha          # GitHub Actions cache (10 GB)
-    cache-to: type=gha,mode=max
-    push: true
-
-- uses: aquasecurity/trivy-action@master
-  with:
-    image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE }}:..."
-    exit-code: "1"
-    severity: CRITICAL,HIGH</code></pre>
-    <p style="font-size: 0.65em; color: var(--muted); margin-top: 8px;">
-      Use OIDC (id-token: write) for authentication — short-lived tokens, no long-lived service account keys stored as secrets.
-    </p>
+    <aside class="notes">The full CI pipeline: build with cache, test, scan, push, sign. OIDC eliminates long-lived credentials. cosign provides supply chain security. Interview tip: mention OIDC authentication when discussing CI/CD security — it shows you understand modern credential management beyond just "store a secret in GitHub."</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- LESSON 9: Debugging Containers                         -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 9: Debugging Containers                          -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">09</div>
     <h2>Debugging Containers</h2>
-    <p style="color: #aaa; font-size: 0.8em;">A systematic workflow beats 2 AM guessing</p>
+    <p style="color: #aaa; font-size: 0.8em;">When things go wrong &mdash; a systematic workflow</p>
+    <aside class="notes">It's 2 AM. PagerDuty fires. Your ML inference service returns 500s. You need a systematic debugging workflow, not random guessing. This lesson gives you that workflow.</aside>
   </section>
 
   <section>
-    <h2>The Debugging Workflow</h2>
-    <div class="flow" style="flex-direction: column; gap: 10px; margin: 16px 0;">
-      <div class="flow-box" style="text-align:center;">
-        <strong>1. <code>docker logs my-api</code></strong> — 90% of answers are here
-      </div>
-      <div class="flow-arrow" style="text-align:center;">↓</div>
-      <div class="flow-box" style="text-align:center;">
-        <strong>2. <code>docker exec -it my-api /bin/bash</code></strong> — if container is running
-      </div>
-      <div class="flow-arrow" style="text-align:center;">↓</div>
-      <div class="flow-box" style="text-align:center;">
-        <strong>3. <code>docker inspect my-api</code></strong> — exit code, restart count, health status, resource config
-      </div>
-      <div class="flow-arrow" style="text-align:center;">↓</div>
-      <div class="flow-box" style="text-align:center;">
-        <strong>4. <code>docker stats my-api</code></strong> — memory near limit? CPU pegged?
-      </div>
-      <div class="flow-arrow" style="text-align:center;">↓</div>
-      <div class="flow-box" style="text-align:center; border-color: var(--accent2);">
-        <strong>5. <code>docker run -it --entrypoint /bin/bash my-api:v1</code></strong> — override entrypoint, explore manually
-      </div>
+    <h2>The Debugging Flowchart</h2>
+    <div class="flow" style="justify-content: center; margin: 12px 0;">
+      <div class="flow-box">Container problem?</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">docker logs</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">docker exec</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">docker inspect</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">docker stats</div>
     </div>
+    <pre><code class="language-bash"># Step 1: ALWAYS start with logs (solves 90% of problems)
+docker logs --tail 100 -f my-api
+
+# Step 2: Get inside the running container
+docker exec -it my-api /bin/bash
+
+# Step 3: Check metadata (IP, exit code, restart count, health)
+docker inspect my-api --format '{{.State.ExitCode}}'
+docker inspect my-api --format '{{.RestartCount}}'
+
+# Step 4: Check resource usage (CPU close to limit? Memory near OOM?)
+docker stats --no-stream
+
+# Step 5: Container won't start? Override entrypoint to get a shell
+docker run -it --entrypoint /bin/bash my-api:v1</code></pre>
+    <aside class="notes">90% of debugging is just reading logs. The entrypoint override trick is critical: when a container crashes immediately on startup, you can't exec into it. Overriding the entrypoint to a shell lets you investigate the filesystem, try running commands manually, and find the issue.</aside>
   </section>
 
   <section>
-    <h2>Exit Codes — Read the Story</h2>
+    <h2>Exit Codes <span class="tag tag-red">know these cold</span></h2>
     <div class="exit-grid">
       <div class="exit-card ok">
         <div class="code">0</div>
-        <div class="desc">Clean exit — check if CMD is a server (it should run forever)</div>
+        <div class="desc">Clean exit. Process finished successfully. Check if CMD is a script that completed instead of a long-running server.</div>
       </div>
       <div class="exit-card warn">
         <div class="code">1</div>
-        <div class="desc">Application error — check docker logs for traceback</div>
+        <div class="desc">App error. Missing module, config not found, DB connection refused. Check <code>docker logs</code>.</div>
       </div>
       <div class="exit-card warn">
         <div class="code">126</div>
-        <div class="desc">Command not executable — chmod +x your entrypoint script</div>
+        <div class="desc">Not executable. Entrypoint script missing <code>chmod +x</code>.</div>
       </div>
       <div class="exit-card err">
         <div class="code">127</div>
-        <div class="desc">Command not found — binary missing from image</div>
+        <div class="desc">Command not found. Binary in CMD doesn't exist in the image.</div>
       </div>
       <div class="exit-card err">
         <div class="code">137</div>
-        <div class="desc">OOM kill (SIGKILL) — increase --memory or fix leak</div>
+        <div class="desc">SIGKILL (128+9). Usually OOM-killed. Increase <code>--memory</code> limit.</div>
       </div>
-      <div class="exit-card ok">
+      <div class="exit-card warn">
         <div class="code">143</div>
-        <div class="desc">Graceful SIGTERM shutdown — normal from orchestrator</div>
+        <div class="desc">SIGTERM (128+15). Graceful shutdown via <code>docker stop</code> or orchestrator.</div>
       </div>
     </div>
+    <aside class="notes">Exit code 137 is the most common production issue for ML services. Large models consume memory during loading, and if the limit is too low, the container gets OOM-killed. 143 is normal graceful shutdown. 127 means you have a typo in CMD or the binary isn't installed. Interview question: "Your container keeps restarting with exit code 137. What do you do?" = increase memory limit or find the leak.</aside>
   </section>
 
   <section>
-    <h2>The Debug Sidecar Pattern</h2>
-    <p style="font-size: 0.78em; color: #ddd;">When your production container has no shell (distroless), attach a debug container to the same network:</p>
-    <pre><code class="language-bash"># Attach netshoot to same network as production container
-docker run -it --rm \
-  --network container:my-api \
-  nicolaka/netshoot
+    <h2>Debug Sidecar: netshoot</h2>
+    <p style="font-size: 0.72em; color: #ddd;">Production containers (distroless, minimal) don't have curl, ping, dig, or tcpdump. Use a debug sidecar instead of bloating your production image.</p>
+    <pre><code class="language-bash"># Attach to the same network namespace as your container
+docker run -it --rm --network container:my-api nicolaka/netshoot
 
-# From inside netshoot — full debug toolkit, no production image changes
-curl localhost:8000/health
-dig redis
-tcpdump -i eth0 port 5432
-ss -tulpn</code></pre>
-    <p style="font-size: 0.7em; color: var(--accent); margin-top: 10px;">
-      Debug the production container without modifying the production image.
-    </p>
+# Now you can:
+curl localhost:8000/health          # test API from inside its network
+dig redis                           # check DNS resolution
+tcpdump -i eth0 port 5432           # capture PostgreSQL traffic
+ss -tlnp                            # see listening ports
+
+# Docker events — the audit trail
+docker events --filter container=my-api --since 1h
+# Shows: die, oom, health_status changes, restarts</code></pre>
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-title">Structured Logging = Faster Debugging</div>
+      <p>Log JSON to stdout: <code>{"level":"error","msg":"DB timeout","host":"postgres","latency_ms":5023}</code>. Pipe through <code>jq</code> to filter. Parseable by ELK, Loki, CloudWatch.</p>
+    </div>
+    <aside class="notes">nicolaka/netshoot is the Swiss Army knife of container debugging. It has every network tool you could need. The debug sidecar pattern (attach to same network namespace) lets you debug without modifying the production image. In Kubernetes, this becomes "ephemeral debug containers" (kubectl debug).</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
 <!-- LESSON 10: System Design Patterns                       -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
     <div class="section-number">10</div>
     <h2>System Design Patterns</h2>
-    <p style="color: #aaa; font-size: 0.8em;">Docker in real ML systems — five production patterns</p>
+    <p style="color: #aaa; font-size: 0.8em;">Docker in real ML systems &mdash; five production patterns</p>
+    <aside class="notes">This lesson puts everything together. Five patterns you'll encounter as a Staff MLE, each with a Compose architecture and honest discussion of where Docker Compose breaks down and Kubernetes becomes necessary.</aside>
   </section>
 
   <section>
-    <h2>Five ML System Patterns</h2>
-    <div class="pattern-card">
-      <div class="ptitle">Pattern 1 — ML Inference Service</div>
-      <div class="pdesc">Long-running servers. Multiple API replicas behind nginx. Redis prediction cache. Separate frontend/backend networks.</div>
-      <div class="pstack">nginx → FastAPI (×2) → TorchServe/Triton · Redis · PostgreSQL</div>
+    <h2>Pattern 1: ML Inference Service</h2>
+    <div class="flow" style="justify-content: center; margin: 12px 0;">
+      <div class="flow-box">nginx</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">FastAPI Gateway</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">TorchServe / Triton</div>
     </div>
-    <div class="pattern-card">
-      <div class="ptitle">Pattern 2 — Training Pipeline</div>
-      <div class="pdesc">Batch jobs, not servers. GPU access via nvidia-docker. <code>service_completed_successfully</code> chains stages like a DAG.</div>
-      <div class="pstack">data-prep → train → evaluate · shared volume checkpoints/</div>
+    <div class="card-grid cols-3" style="margin-top: 12px;">
+      <div class="card">
+        <div class="card-title">Caching</div>
+        <p>Redis for prediction caching. LRU eviction. Sub-ms for repeated queries.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Async Batch</div>
+        <p>Celery workers for batch predictions. Scale independently of the API.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Network Segmentation</div>
+        <p>Frontend (nginx+API) and backend (DB+cache) networks. Defense in depth.</p>
+      </div>
     </div>
-    <div class="pattern-card">
-      <div class="ptitle">Pattern 3 — RAG System</div>
-      <div class="pdesc">Specialized containers per concern. Query embedding, vector search, and LLM generation each isolated.</div>
-      <div class="pstack">FastAPI → sentence-transformers → Qdrant → vLLM</div>
-    </div>
+    <pre><code class="language-yaml">services:
+  api:
+    build: { context: ., target: runtime }
+    deploy: { replicas: 2, resources: { limits: { memory: 1G } } }
+    networks: [frontend, backend]
+  model-server:
+    image: pytorch/torchserve:latest
+    volumes: [model-weights:/models:ro]
+    deploy: { resources: { limits: { memory: 4G } } }
+    networks: [backend]
+networks:
+  frontend:
+  backend:</code></pre>
+    <aside class="notes">The two-network pattern (frontend/backend) is critical for interviews. It means nginx can't directly access PostgreSQL — all traffic must go through the API. This is defense-in-depth at the network level. The model server gets 4x the memory of the API because loading models is memory-intensive.</aside>
   </section>
 
   <section>
-    <h2>Network Segmentation in Compose</h2>
-    <pre><code class="language-yaml">networks:
-  frontend:    # client-facing — nginx, api
-  backend:     # internal only — postgres, redis, model-server
-
-services:
-  nginx: { networks: [frontend] }
-  api:   { networks: [frontend, backend] }     # bridge between zones
-  postgres: { networks: [backend] }            # never exposed to frontend
-  redis:    { networks: [backend] }
-  model-server: { networks: [backend] }</code></pre>
-    <p style="font-size: 0.72em; color: #aaa; margin-top: 10px;">
-      Defense-in-depth: even if the API is compromised, an attacker can't reach the database directly from the frontend network.
+    <h2>Pattern 2: Training Pipeline</h2>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Data Prep</div>
+          <div class="ts-desc">Download, clean, split.<br>Write to shared volume.</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Training</div>
+          <div class="ts-desc">GPU access. Read data,<br>write checkpoints.</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">Evaluation</div>
+          <div class="ts-desc">Load model, run metrics.<br>Push to registry.</div>
+        </div>
+      </div>
+    </div>
+    <pre><code class="language-yaml">services:
+  data-prep:
+    build: { dockerfile: Dockerfile.data-prep }
+    volumes: [training-data:/data]
+  train:
+    build: { dockerfile: Dockerfile.train }
+    volumes: [training-data:/data, checkpoints:/checkpoints]
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+    depends_on:
+      data-prep: { condition: service_completed_successfully }
+  evaluate:
+    build: { dockerfile: Dockerfile.eval }
+    depends_on:
+      train: { condition: service_completed_successfully }</code></pre>
+    <p style="font-size: 0.68em; color: var(--accent);">
+      <code>service_completed_successfully</code> &mdash; wait for exit code 0 before starting next stage. Compose as a simple DAG executor.
     </p>
+    <aside class="notes">Training pipelines are batch jobs, not servers. The key Compose feature is service_completed_successfully, which chains stages sequentially. Shared volumes pass data between stages. For production training at scale, you'd use Kubeflow Pipelines or Airflow with KubernetesPodOperator.</aside>
   </section>
 
   <section>
-    <h2>When Compose Isn't Enough</h2>
+    <h2>Pattern 3: RAG System</h2>
+    <div class="flow" style="justify-content: center; margin: 12px 0;">
+      <div class="flow-box">Query</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Embedder</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Qdrant (Vector DB)</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">vLLM (Generator)</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Answer</div>
+    </div>
+    <div class="card-grid cols-2" style="margin-top: 14px;">
+      <div class="card">
+        <div class="card-title" style="color: var(--warn);">start_period Is Critical</div>
+        <p>LLM container needs <code>start_period: 120s</code> because loading a 16GB model takes 1-2 minutes. Without it, the health check fails during loading and Compose restarts in an infinite loop.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Resource Profiles</div>
+        <ul>
+          <li>Embedder: 4GB RAM, CPU-only</li>
+          <li>vLLM: GPU required, 16GB+ RAM</li>
+          <li>Qdrant: 2GB RAM, SSD storage volume</li>
+          <li>API Gateway: 512MB, fast and light</li>
+        </ul>
+      </div>
+    </div>
+    <aside class="notes">RAG systems are the most common AI pattern in 2024-2025. Each container has dramatically different resource requirements. The start_period tip is gold for interviews — it shows you've actually deployed ML models in containers and dealt with the startup time problem.</aside>
+  </section>
+
+  <section>
+    <h2>Patterns 4-5 &amp; When Compose Isn't Enough</h2>
+    <div class="card-grid cols-2" style="margin-bottom: 14px;">
+      <div class="pattern-card">
+        <div class="ptitle">Pattern 4: Real-Time Feature Engineering</div>
+        <div class="pdesc">Kafka consumers compute windowed aggregates (e.g., "transactions in last 5 min" for fraud). Features stored in Redis for low-latency serving.</div>
+        <div class="pstack">kafka + feature-worker (x3) + redis</div>
+      </div>
+      <div class="pattern-card">
+        <div class="ptitle">Pattern 5: A/B Testing Infrastructure</div>
+        <div class="pdesc">Nginx/Envoy splits traffic (70/30) between model versions. Prometheus + Grafana compare latency, accuracy, error rate.</div>
+        <div class="pstack">router + model-v1 + model-v2 + prometheus + grafana</div>
+      </div>
+    </div>
     <table class="compare">
-      <thead>
-        <tr><th>Need</th><th>Docker Compose</th><th>Kubernetes</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Multi-host deployment</td>
-          <td style="color: var(--warn);">Single host only</td>
-          <td style="color: var(--accent);">Built-in</td>
-        </tr>
-        <tr>
-          <td>Auto-scaling</td>
-          <td style="color: var(--warn);">Manual replica change</td>
-          <td style="color: var(--accent);">HPA / KEDA</td>
-        </tr>
-        <tr>
-          <td>Self-healing</td>
-          <td>Restart policies</td>
-          <td style="color: var(--accent);">Pod rescheduling across nodes</td>
-        </tr>
-        <tr>
-          <td>Rolling deploys</td>
-          <td style="color: var(--warn);">Brief downtime</td>
-          <td style="color: var(--accent);">Zero-downtime rolling update</td>
-        </tr>
-        <tr>
-          <td>Dev / CI / Staging</td>
-          <td style="color: var(--accent);">Excellent</td>
-          <td>Overkill</td>
-        </tr>
-      </tbody>
+      <tr><th>Docker Compose Can Do</th><th>Needs Kubernetes</th></tr>
+      <tr><td>Multi-container apps on one host</td><td>Multi-node clusters</td></tr>
+      <tr><td>Basic health checks &amp; restart</td><td>Auto-healing across nodes</td></tr>
+      <tr><td>Simple scaling (<code>--scale</code>)</td><td>HPA auto-scaling on metrics</td></tr>
+      <tr><td>Named volumes on one host</td><td>Distributed storage (PVCs)</td></tr>
+      <tr><td>Dev/test environments</td><td>Zero-downtime rolling updates</td></tr>
+      <tr><td>Resource limits</td><td>GPU scheduling across a cluster</td></tr>
     </table>
+    <aside class="notes">The Compose-to-Kubernetes transition happens when you need: multi-node deployment, zero-downtime deploys, auto-scaling, self-healing across nodes, or GPU scheduling across a cluster. Your Dockerfile is the same in both. Only the orchestration layer changes. Module 4 picks up exactly where this module ends.</aside>
   </section>
 </section>
 
 
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- SUMMARY                                                -->
-<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- RECAP                                                   -->
+<!-- ════════════════════════════════════════════════════════ -->
 <section>
   <section>
-    <h2>Key Takeaways</h2>
+    <h2>Module Recap <span class="tag tag-green">10 lessons in 10 minutes</span></h2>
     <div class="card-grid cols-2">
       <div class="card">
         <div class="card-title">Foundation</div>
         <ul>
-          <li>Containers = isolated processes sharing host kernel</li>
-          <li>Three primitives: namespaces, cgroups, OverlayFS</li>
-          <li>Layer caching: rarely-changing deps first, code last</li>
-          <li>Image size matters: <code>python:3.12-slim</code> for ML</li>
+          <li><strong>L1:</strong> Namespaces (isolation) + cgroups (resource limits)</li>
+          <li><strong>L2:</strong> CLI &rarr; dockerd &rarr; containerd &rarr; runc &rarr; your process</li>
+          <li><strong>L3:</strong> Layers are immutable, content-addressable, shared. Union FS + COW.</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">Production Checklist</div>
+        <div class="card-title">Building &amp; Running</div>
         <ul>
-          <li>Multi-stage build, non-root user, exec form CMD</li>
-          <li>Custom bridge networks for container DNS</li>
-          <li><code>service_healthy</code> for reliable Compose startup</li>
-          <li>Trivy scan + cosign sign in CI pipeline</li>
+          <li><strong>L4:</strong> Multi-stage builds. Cache-friendly ordering. Exec form CMD.</li>
+          <li><strong>L5:</strong> Custom bridge networks. Named volumes. Resource limits.</li>
+          <li><strong>L6:</strong> Compose: depends_on + service_healthy. Profiles. Watch.</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">Security</div>
+        <div class="card-title">Production</div>
         <ul>
-          <li><code>--cap-drop ALL --read-only --no-new-privileges</code></li>
-          <li>Secrets: BuildKit mounts, never ENV/ARG</li>
-          <li>Scan images before every push</li>
+          <li><strong>L7:</strong> Non-root + cap-drop ALL + read-only + no-new-privileges</li>
+          <li><strong>L8:</strong> Tag with semver + SHA. Multi-arch. OIDC auth. cosign.</li>
+          <li><strong>L9:</strong> logs &rarr; exec &rarr; inspect &rarr; stats. Exit 137 = OOM.</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">Debugging</div>
+        <div class="card-title">System Design</div>
         <ul>
-          <li>logs → exec → inspect → stats → override entrypoint</li>
-          <li>Exit code 137 = OOM, 143 = graceful stop, 127 = missing binary</li>
-          <li>netshoot sidecar for distroless containers</li>
+          <li><strong>L10:</strong> Inference, training, RAG, feature eng., A/B testing</li>
+          <li>Network segmentation. start_period for ML models.</li>
+          <li>Compose for dev, Kubernetes for multi-node prod.</li>
         </ul>
       </div>
     </div>
+    <aside class="notes">This recap slide is your interview cheat sheet. Foundation: WHY containers and HOW they work. Building: HOW to write good Dockerfiles and run them. Production: HOW to secure, distribute, and debug. System Design: HOW Docker fits into real ML architectures and where Kubernetes takes over.</aside>
   </section>
 
   <section class="center">
@@ -1181,11 +1405,11 @@ services:
       <div class="card" style="text-align: center;">
         <div class="card-title">Module 6</div>
         <p>CI/CD Pipelines</p>
-        <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">Automate build → scan → push → deploy</p>
+        <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">Automate build &rarr; scan &rarr; push &rarr; deploy</p>
       </div>
     </div>
     <p style="margin-top: 28px; font-size: 0.7em; color: var(--muted);">
-      AI Backend Engineer Learning Path · aiengpath.dev
+      AI Backend Engineer Learning Path &middot; aiengpath.dev
     </p>
   </section>
 </section>

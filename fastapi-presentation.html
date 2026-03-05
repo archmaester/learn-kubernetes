@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastAPI Deep Dive — AI Backend Engineer Series</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css" />
+  <style>
+    :root {
+      --accent: #00d4aa;
+      --accent2: #4f9cf9;
+      --warn: #ff6b6b;
+      --muted: #888;
+      --card-bg: rgba(255,255,255,0.05);
+    }
+
+    .reveal {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      text-transform: none;
+      letter-spacing: -0.02em;
+    }
+
+    .reveal h1 { font-size: 2.4em; font-weight: 800; }
+    .reveal h2 { font-size: 1.6em; font-weight: 700; color: var(--accent); }
+    .reveal h3 { font-size: 1.15em; font-weight: 600; color: var(--accent2); }
+
+    .reveal section { text-align: left; }
+    .reveal .center { text-align: center; }
+
+    /* Pills / tags */
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.55em;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .tag-green  { background: rgba(0,212,170,0.2); color: var(--accent); border: 1px solid var(--accent); }
+    .tag-blue   { background: rgba(79,156,249,0.2); color: var(--accent2); border: 1px solid var(--accent2); }
+    .tag-red    { background: rgba(255,107,107,0.2); color: var(--warn); border: 1px solid var(--warn); }
+    .tag-gray   { background: rgba(255,255,255,0.1); color: #ccc; border: 1px solid #555; }
+
+    /* Cards */
+    .card-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .card .card-title {
+      font-size: 0.75em;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .card p, .card li { font-size: 0.72em; line-height: 1.5; color: #ddd; }
+    .card ul { padding-left: 1.2em; margin: 0; }
+
+    /* Code blocks */
+    .reveal pre {
+      width: 100%;
+      box-shadow: none;
+      border-radius: 8px;
+      font-size: 0.65em;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Comparison table */
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7em;
+    }
+    .compare th {
+      background: rgba(0,212,170,0.15);
+      color: var(--accent);
+      padding: 8px 14px;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 2px solid var(--accent);
+    }
+    .compare td {
+      padding: 7px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      color: #ddd;
+      vertical-align: top;
+    }
+    .compare tr:hover td { background: rgba(255,255,255,0.03); }
+
+    /* Timeline */
+    .timeline {
+      display: flex;
+      gap: 0;
+      margin: 10px 0;
+    }
+    .timeline-step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+    .timeline-step::after {
+      content: '\2192';
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1.2em;
+    }
+    .timeline-step:last-child::after { display: none; }
+    .timeline-step .ts-box {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 10px 8px;
+      margin: 0 6px;
+    }
+    .timeline-step .ts-label { font-size: 0.6em; color: var(--accent); font-weight: 700; }
+    .timeline-step .ts-desc  { font-size: 0.55em; color: #aaa; margin-top: 4px; }
+
+    /* Checklist */
+    .checklist { list-style: none; padding: 0; margin: 0; }
+    .checklist li {
+      padding: 5px 0 5px 28px;
+      position: relative;
+      font-size: 0.75em;
+      color: #ddd;
+      line-height: 1.4;
+    }
+    .checklist li::before {
+      content: '\2713';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .checklist li.bad::before {
+      content: '\2717';
+      color: var(--warn);
+    }
+
+    /* Cover slide */
+    .cover-meta { color: var(--muted); font-size: 0.75em; margin-top: 8px; }
+    .cover-module { color: var(--accent); font-size: 0.9em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    /* Section title slides */
+    .section-number {
+      font-size: 5em;
+      font-weight: 900;
+      color: rgba(0,212,170,0.12);
+      line-height: 1;
+      margin-bottom: -10px;
+    }
+
+    /* Exit code table */
+    .exit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .exit-card {
+      border-radius: 8px;
+      padding: 12px 14px;
+      border-left: 3px solid;
+    }
+    .exit-card.ok    { border-color: var(--accent); background: rgba(0,212,170,0.08); }
+    .exit-card.warn  { border-color: #ffc107;       background: rgba(255,193,7,0.08); }
+    .exit-card.err   { border-color: var(--warn);   background: rgba(255,107,107,0.08); }
+    .exit-card .code { font-family: monospace; font-size: 1.2em; font-weight: 800; }
+    .exit-card .desc { font-size: 0.62em; color: #bbb; margin-top: 4px; }
+
+    /* Speaker note styling */
+    .reveal .speaker-notes { font-size: 1em; }
+
+    /* Progress bar color */
+    .reveal .progress { color: var(--accent); }
+
+    /* Slide number */
+    .reveal .slide-number { color: var(--muted); }
+
+    /* Inline code */
+    .reveal code:not(.hljs) {
+      background: rgba(255,255,255,0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      color: #f8c55d;
+    }
+
+    /* Big number callout */
+    .stat-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .stat {
+      text-align: center;
+      flex: 1;
+    }
+    .stat-num {
+      font-size: 2.2em;
+      font-weight: 900;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 0.6em;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    /* Flow diagram */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 0.7em;
+    }
+    .flow-box {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 6px 12px;
+      white-space: nowrap;
+    }
+    .flow-arrow { color: var(--muted); font-size: 1.2em; }
+
+    /* Pattern cards for system design */
+    .pattern-card {
+      border-left: 3px solid var(--accent);
+      background: var(--card-bg);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 10px;
+    }
+    .pattern-card .ptitle { font-size: 0.72em; font-weight: 700; color: var(--accent); }
+    .pattern-card .pdesc  { font-size: 0.65em; color: #bbb; margin-top: 4px; }
+    .pattern-card .pstack { font-size: 0.6em; color: #888; font-family: monospace; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- COVER                                                   -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="center">
+  <div class="cover-module">AI Backend Engineer Series &middot; Module 2</div>
+  <h1 style="margin-top: 16px;">FastAPI<br>Deep Dive</h1>
+  <p style="color: #aaa; font-size: 0.8em; margin-top: 16px;">
+    From first endpoint to production AI inference platform.<br>
+    10 lessons. One running project: <strong>IntelliAPI</strong>.
+  </p>
+  <div class="stat-row" style="margin-top: 32px;">
+    <div class="stat"><div class="stat-num">10</div><div class="stat-label">Lessons</div></div>
+    <div class="stat"><div class="stat-num">~4h</div><div class="stat-label">Read time</div></div>
+    <div class="stat"><div class="stat-num">1</div><div class="stat-label">Capstone System Design</div></div>
+  </div>
+  <aside class="notes">Welcome. This deck covers the FastAPI module end-to-end, building IntelliAPI — an AI document classification and summarization API — from the first endpoint to a production-deployed, observable service with system design patterns. Press S for speaker notes with interview tips.</aside>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- AGENDA                                                  -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <h2>What We Cover</h2>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">Foundation (1-3)</div>
+      <ul>
+        <li>Why FastAPI for AI &mdash; Flask vs FastAPI vs Django</li>
+        <li>Async Python deep dive &mdash; event loop, GIL, uvloop</li>
+        <li>Pydantic V2 &mdash; data validation at scale</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Architecture (4-6)</div>
+      <ul>
+        <li>Dependency injection &amp; application lifecycle</li>
+        <li>Authentication &amp; authorization (JWT, RBAC)</li>
+        <li>Middleware, error handling &amp; structured logging</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Quality &amp; Real-Time (7-8)</div>
+      <ul>
+        <li>Testing FastAPI &mdash; pyramid, fixtures, testcontainers</li>
+        <li>Background tasks, WebSockets &amp; SSE streaming</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Production &amp; Design (9-10)</div>
+      <ul>
+        <li>Production deployment &mdash; Gunicorn, Docker, health checks</li>
+        <li>System design: AI inference platform (capstone)</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">Ten lessons split across four themes. Foundation teaches async Python and type-driven validation. Architecture covers DI, auth, and middleware. Quality and Real-Time cover testing and streaming patterns. Production and Design prepare you for deploying and designing ML systems at scale. Each lesson builds on IntelliAPI, the running project.</aside>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 1: Why FastAPI for AI Engineering                -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">01</div>
+    <h2>Why FastAPI for AI Engineering</h2>
+    <p style="color: #aaa; font-size: 0.8em;">The gap between training a model and serving it over HTTP</p>
+    <aside class="notes">This lesson explains why FastAPI won the ML serving framework race. The key argument: model serving is infrastructure, not an afterthought. A Flask endpoint bolted on in a Friday afternoon will fall over at 50 concurrent requests.</aside>
+  </section>
+
+  <section>
+    <h2>The ML Serving Gap</h2>
+    <p style="font-size: 0.8em; color: #ddd; line-height: 1.6;">
+      You train a document classifier. <strong>94% accuracy, sub-80ms inference.</strong>
+      You hand it to the platform team. They bolt on a Flask endpoint. Result:
+    </p>
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-title">What Goes Wrong</div>
+      <ul>
+        <li>Falls over at 50 concurrent requests &mdash; Flask is sync, one thread per request</li>
+        <li>Returns cryptic 500 errors on malformed input &mdash; no validation</li>
+        <li>No auto-generated documentation &mdash; clients guess the contract</li>
+        <li>Leaks memory because nobody thought about GIL + model inference</li>
+      </ul>
+    </div>
+    <p style="font-size: 0.72em; color: var(--accent); margin-top: 12px;">
+      Model serving is infrastructure. It deserves the same engineering rigor as the model itself.
+    </p>
+    <aside class="notes">Interview tip: When asked "why FastAPI over Flask for ML?", the answer is: native async (don't block on I/O), automatic OpenAPI docs (clients self-serve), Pydantic validation (garbage in, structured error out), and dependency injection (clean resource management for DB/model/cache). It's not about speed benchmarks — it's about engineering correctness.</aside>
+  </section>
+
+  <section>
+    <h2>Framework Comparison <span class="tag tag-blue">interview-ready</span></h2>
+    <table class="compare">
+      <tr><th>Feature</th><th>Flask</th><th>Django</th><th>FastAPI</th></tr>
+      <tr><td>Async native</td><td style="color: var(--warn);">No (WSGI)</td><td>Partial</td><td style="color: var(--accent);">Yes (ASGI)</td></tr>
+      <tr><td>Type validation</td><td>Manual / Marshmallow</td><td>Serializers</td><td style="color: var(--accent);">Pydantic (built-in)</td></tr>
+      <tr><td>Auto OpenAPI docs</td><td style="color: var(--warn);">No</td><td>django-spectacular</td><td style="color: var(--accent);">Yes (Swagger + ReDoc)</td></tr>
+      <tr><td>Dependency injection</td><td style="color: var(--warn);">No</td><td>Implicit (middleware)</td><td style="color: var(--accent);">First-class Depends()</td></tr>
+      <tr><td>WebSocket support</td><td>Flask-SocketIO</td><td>Django Channels</td><td style="color: var(--accent);">Built-in</td></tr>
+      <tr><td>ML ecosystem fit</td><td>Legacy codebases</td><td>Overkill for APIs</td><td style="color: var(--accent);">Purpose-built for APIs</td></tr>
+    </table>
+    <aside class="notes">FastAPI sits at the intersection of correctness (Pydantic), performance (ASGI + async), and developer experience (auto docs, type hints). For new ML serving projects, FastAPI is the default choice in 2024-2025. Flask is fine for legacy or simple internal tools; Django is for full web apps with ORM, admin, auth already baked in.</aside>
+  </section>
+
+  <section>
+    <h2>IntelliAPI: What We're Building</h2>
+    <div class="flow" style="justify-content: center; margin: 16px 0;">
+      <div class="flow-box">Client</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">FastAPI Gateway</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">ONNX Classifier</div>
+    </div>
+    <div class="card-grid cols-3" style="margin-top: 12px;">
+      <div class="card">
+        <div class="card-title">Classify</div>
+        <p>POST /classify &mdash; sync path. Sub-200ms inference with caching.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Summarize</div>
+        <p>POST /summarize &mdash; async queue. Returns 202, client polls for result.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Stream</div>
+        <p>POST /classify/stream &mdash; SSE progress events. Real-time feedback.</p>
+      </div>
+    </div>
+    <p style="font-size: 0.68em; color: var(--muted); margin-top: 12px;">
+      Every lesson adds to this codebase &mdash; from first endpoint to deployed, observable, production-grade service.
+    </p>
+    <aside class="notes">IntelliAPI is a document intelligence platform: classification (fast, sync), summarization (slow, async), streaming (real-time). By Lesson 10, you'll have a system design answer for "Design an AI inference platform" that covers every component from load balancing to GPU batching.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 2: Async Python Deep Dive                       -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">02</div>
+    <h2>Async Python Deep Dive</h2>
+    <p style="color: #aaa; font-size: 0.8em;">The event loop, the GIL, and why <code>async</code> matters for ML APIs</p>
+    <aside class="notes">Most Python developers use async without understanding it. This lesson covers the event loop from first principles: what it actually does, why the GIL doesn't protect you, and when async helps vs when it hurts. Critical for interviews.</aside>
+  </section>
+
+  <section>
+    <h2>The Event Loop Model</h2>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">1. Call async fn</div>
+          <div class="ts-desc">Returns a coroutine<br>(not a result)</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">2. await</div>
+          <div class="ts-desc">Suspends coroutine,<br>yields control to loop</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">3. I/O completes</div>
+          <div class="ts-desc">OS notifies loop<br>via epoll/kqueue</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">4. Resume</div>
+          <div class="ts-desc">Coroutine picks up<br>where it left off</div>
+        </div>
+      </div>
+    </div>
+    <pre><code class="language-python"># One thread, many concurrent requests
+async def classify(text: str) -> dict:
+    # CPU work: tokenize (runs on the single thread)
+    tokens = tokenize(text)
+
+    # I/O: check Redis cache (suspends, loop handles other requests)
+    cached = await redis.get(f"classify:{hash(text)}")
+    if cached:
+        return json.loads(cached)
+
+    # CPU work: model inference (blocks the loop!)
+    result = model.predict(tokens)  # BAD if slow
+
+    # I/O: cache result (suspends again)
+    await redis.setex(f"classify:{hash(text)}", 3600, json.dumps(result))
+    return result</code></pre>
+    <aside class="notes">The event loop is a single-threaded scheduler. During await, the coroutine suspends and the loop runs other coroutines. This is how one thread handles thousands of concurrent connections. But CPU-bound work (model inference) blocks the loop. This is the #1 async mistake in ML services.</aside>
+  </section>
+
+  <section>
+    <h2>The GIL Doesn't Save You <span class="tag tag-red">common trap</span></h2>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <div class="card-title" style="color: var(--warn);">Blocking the Event Loop</div>
+        <pre style="font-size: 0.85em;"><code class="language-python"># 500ms model inference blocks
+# ALL other requests wait
+result = model.predict(tokens)
+# 1000 concurrent users?
+# They all queue behind this.</code></pre>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color: var(--accent);">Offload to Thread Pool</div>
+        <pre style="font-size: 0.85em;"><code class="language-python"># Run CPU work in a thread
+import asyncio
+result = await asyncio.to_thread(
+    model.predict, tokens
+)
+# Loop stays free for other
+# requests while this runs</code></pre>
+      </div>
+    </div>
+    <p style="font-size: 0.72em; color: var(--accent); margin-top: 12px;">
+      Rule: <code>await</code> for I/O, <code>asyncio.to_thread()</code> for CPU, <code>ProcessPoolExecutor</code> for heavy compute.
+    </p>
+    <aside class="notes">Interview question: "Your async FastAPI endpoint calls a PyTorch model. Under load, latency spikes for all endpoints. Why?" Answer: model inference is CPU-bound and blocks the event loop. Solution: asyncio.to_thread() or ProcessPoolExecutor. The GIL means threads don't give true parallelism for pure Python, but C extensions like NumPy/PyTorch release the GIL during compute.</aside>
+  </section>
+
+  <section>
+    <h2>uvloop: The Secret Weapon <span class="tag tag-green">production</span></h2>
+    <pre><code class="language-python"># uvloop replaces asyncio's event loop with a C implementation
+# based on libuv (same engine as Node.js)
+# 2-4x faster than the default asyncio loop
+
+# Install: pip install uvloop
+# Usage: uvicorn app.main:app --loop uvloop
+
+# Or programmatically:
+import uvloop
+uvloop.install()  # Call before any asyncio code</code></pre>
+    <div class="card" style="margin-top: 14px;">
+      <div class="card-title">Performance Tip</div>
+      <p>Uvicorn uses uvloop by default if installed. Pair with <code>httptools</code> for the fastest HTTP parsing. Together they give FastAPI throughput comparable to Go/Rust for I/O-bound workloads.</p>
+    </div>
+    <aside class="notes">uvloop is a drop-in replacement for asyncio's event loop written in Cython on top of libuv. It reduces event loop overhead by 2-4x. In production FastAPI deployments, always install uvloop and httptools. Uvicorn auto-detects both.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 3: Pydantic V2 — Data Validation at Scale       -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">03</div>
+    <h2>Pydantic V2 &mdash; Data Validation at Scale</h2>
+    <p style="color: #aaa; font-size: 0.8em;">Type-safe contracts between your API and every client</p>
+    <aside class="notes">Pydantic V2 is a complete rewrite with a Rust core (pydantic-core). It's 5-50x faster than V1 and is the backbone of FastAPI's validation, serialization, and OpenAPI generation. Schemas are the contract — change them carefully.</aside>
+  </section>
+
+  <section>
+    <h2>IntelliAPI: Document Schema</h2>
+    <pre><code class="language-python">from pydantic import BaseModel, ConfigDict, Field, field_validator, computed_field
+from enum import Enum
+from datetime import datetime
+
+class DocumentCategory(str, Enum):
+    LEGAL_CONTRACT = "legal_contract"
+    FINANCIAL_REPORT = "financial_report"
+    MEDICAL_RECORD = "medical_record"
+    TECHNICAL_SPEC = "technical_spec"
+
+class DocumentRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    text: str = Field(..., min_length=10, max_length=100_000,
+                      description="Document text to classify")
+    language: str = Field(default="en", pattern=r"^[a-z]{2}$")
+    priority: str = Field(default="normal")
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty_after_strip(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("text must contain non-whitespace characters")
+        return v</code></pre>
+    <aside class="notes">This schema does six things: strips whitespace, validates min/max length, enforces a regex pattern on language, provides defaults, generates OpenAPI docs, and runs custom validators. All from type annotations. Interview tip: "How do you validate API input in FastAPI?" Answer: Pydantic models. They validate, serialize, document, and generate OpenAPI specs from a single class definition.</aside>
+  </section>
+
+  <section>
+    <h2>Response Models &amp; Computed Fields</h2>
+    <pre><code class="language-python">class ClassifyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # ORM mode
+
+    document_id: str
+    label: DocumentCategory
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    model_version: str
+    processing_time_ms: float
+    tokens_used: int
+
+    @computed_field
+    @property
+    def is_high_confidence(self) -> bool:
+        return self.confidence >= 0.85</code></pre>
+    <div class="card-grid cols-2" style="margin-top: 14px;">
+      <div class="card">
+        <div class="card-title">from_attributes=True</div>
+        <p>Allows creating the model from ORM objects: <code>ClassifyResponse.model_validate(db_row)</code>. Essential for SQLAlchemy integration.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">computed_field</div>
+        <p>Derived fields that appear in serialization and OpenAPI but aren't stored. Perfect for <code>is_high_confidence</code>, <code>word_count</code>, etc.</p>
+      </div>
+    </div>
+    <aside class="notes">Response models control what leaves your API. They prevent leaking internal fields (like raw DB IDs or internal model metadata). computed_field is new in Pydantic V2 — it replaces the V1 pattern of using a validator to set a field. Interview question: "How do you prevent leaking internal data?" Answer: separate request and response Pydantic models.</aside>
+  </section>
+
+  <section>
+    <h2>V1 to V2 Migration <span class="tag tag-red">gotchas</span></h2>
+    <table class="compare">
+      <tr><th>V1</th><th>V2</th><th>Why</th></tr>
+      <tr><td><code>class Config</code></td><td><code>model_config = ConfigDict(...)</code></td><td>Explicit, type-checked</td></tr>
+      <tr><td><code>orm_mode = True</code></td><td><code>from_attributes = True</code></td><td>Clearer naming</td></tr>
+      <tr><td><code>@validator</code></td><td><code>@field_validator</code></td><td>Separate field/model validators</td></tr>
+      <tr><td><code>.dict()</code></td><td><code>.model_dump()</code></td><td>Explicit serialization control</td></tr>
+      <tr><td><code>.json()</code></td><td><code>.model_dump_json()</code></td><td>Faster JSON via Rust</td></tr>
+      <tr><td>5-50x slower</td><td style="color: var(--accent);">Rust-powered core</td><td>pydantic-core in Rust</td></tr>
+    </table>
+    <p style="font-size: 0.68em; color: var(--accent); margin-top: 12px;">
+      Use <code>bump-pydantic</code> CLI tool for automated migration. Handles 80% of changes.
+    </p>
+    <aside class="notes">The V1 to V2 migration is a common interview topic. The Rust core (pydantic-core) is why V2 is dramatically faster. For ML APIs processing thousands of requests per second, the 5-50x speedup in validation is significant. Always use V2 for new projects.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 4: Dependency Injection & Application Lifecycle  -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">04</div>
+    <h2>Dependency Injection &amp; Application Lifecycle</h2>
+    <p style="color: #aaa; font-size: 0.8em;">Clean resource management for databases, models, and caches</p>
+    <aside class="notes">Dependency injection is FastAPI's most powerful feature and most misunderstood. It's not just about injecting config — it manages resource lifecycles (DB sessions, Redis connections, ML models) with automatic cleanup.</aside>
+  </section>
+
+  <section>
+    <h2>Depends() in Action</h2>
+    <pre><code class="language-python">from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from onnxruntime import InferenceSession
+import redis.asyncio as redis
+
+router = APIRouter(prefix="/classify", tags=["classification"])
+
+@router.post("/", response_model=ClassifyResponse)
+async def classify_document(
+    request: ClassifyRequest,
+    user: User = Depends(get_current_user),    # Auth
+    db: AsyncSession = Depends(get_db),         # DB session
+    model: InferenceSession = Depends(get_classifier),  # ML model
+    cache: redis.Redis = Depends(get_redis),    # Cache client
+) -> ClassifyResponse:
+    """Four dependencies injected — all managed by FastAPI."""
+    cache_key = f"classify:{hashlib.sha256(request.text.encode()).hexdigest()}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return ClassifyResponse(**json.loads(cached))
+    result = await asyncio.to_thread(model.run, None, {"input": tokens})
+    await cache.setex(cache_key, 3600, json.dumps(result))
+    return ClassifyResponse(**result)</code></pre>
+    <aside class="notes">This route has four dependencies: auth, database, ML model, and cache. Each is injected automatically, each has its own lifecycle. The route only contains business logic. Interview tip: "How do you manage database sessions in FastAPI?" Answer: yield dependencies with Depends(). FastAPI manages the session lifecycle — open before the route, close/rollback after.</aside>
+  </section>
+
+  <section>
+    <h2>Yield Dependencies <span class="tag tag-green">essential</span></h2>
+    <pre><code class="language-python">from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yield a DB session — auto-closed after the request."""
+    async with async_session_factory() as session:
+        try:
+            yield session        # Route handler runs here
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()</code></pre>
+    <div class="card" style="margin-top: 14px;">
+      <div class="card-title">Per-Request Caching</div>
+      <p style="font-size: 0.72em; color: #ddd;">If <code>get_db</code> appears in both <code>get_current_user</code> and the route, FastAPI resolves it <strong>once per request</strong> and reuses the same session. No duplicate connections.</p>
+    </div>
+    <aside class="notes">Yield dependencies are context managers in disguise. Code before yield = setup. Code after yield = teardown. FastAPI guarantees teardown runs even if the route raises an exception. This is how you prevent connection leaks in production. Interview question: "How do you ensure DB connections are returned to the pool?" Answer: yield dependencies with try/finally.</aside>
+  </section>
+
+  <section>
+    <h2>Lifespan: App-Level Resources</h2>
+    <pre><code class="language-python">from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # STARTUP: load resources once, shared across all requests
+    app.state.model = onnxruntime.InferenceSession("model.onnx")
+    app.state.redis = redis.from_url(settings.redis_url)
+    engine = create_async_engine(settings.database_url)
+
+    yield  # App runs here
+
+    # SHUTDOWN: clean up
+    await app.state.redis.close()
+    await engine.dispose()
+
+app = FastAPI(title="IntelliAPI", lifespan=lifespan)</code></pre>
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-title" style="color: var(--warn);">Replaces deprecated @app.on_event</div>
+      <p>The <code>lifespan</code> context manager replaces <code>@app.on_event("startup")</code> and <code>@app.on_event("shutdown")</code>. It's cleaner and allows sharing state between startup and shutdown.</p>
+    </div>
+    <aside class="notes">Lifespan events handle app-level resources: ML models, DB engines, Redis pools. These are loaded once at startup and shared across all requests via app.state. Per-request resources (DB sessions) use yield dependencies. Interview tip: clearly distinguish app-level (lifespan) from request-level (Depends) resource management.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 5: Authentication & Authorization               -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">05</div>
+    <h2>Authentication &amp; Authorization</h2>
+    <p style="color: #aaa; font-size: 0.8em;">JWT, OAuth2, RBAC &mdash; securing IntelliAPI endpoints</p>
+    <aside class="notes">Every production API needs auth. FastAPI provides OAuth2 security schemes that integrate with OpenAPI (the Swagger UI gets a lock icon and a login form). This lesson covers JWT-based auth with role-based access control.</aside>
+  </section>
+
+  <section>
+    <h2>JWT Authentication Flow</h2>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">1. Login</div>
+          <div class="ts-desc">POST /auth/token<br>email + password</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">2. Verify</div>
+          <div class="ts-desc">Check bcrypt hash<br>against DB</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">3. Issue JWT</div>
+          <div class="ts-desc">Sign with HS256<br>exp + sub + role</div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="ts-box">
+          <div class="ts-label">4. Use</div>
+          <div class="ts-desc">Authorization:<br>Bearer &lt;token&gt;</div>
+        </div>
+      </div>
+    </div>
+    <pre><code class="language-python">from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    user = await db.execute(select(User).where(User.email == email))
+    return user.scalar_one_or_none() or raise_401()</code></pre>
+    <aside class="notes">OAuth2PasswordBearer tells FastAPI to look for a Bearer token in the Authorization header. It also adds a lock icon to Swagger UI. The get_current_user dependency is reusable — add Depends(get_current_user) to any route to protect it. Interview tip: explain the difference between authentication (who are you?) and authorization (what can you do?).</aside>
+  </section>
+
+  <section>
+    <h2>Role-Based Access Control <span class="tag tag-blue">RBAC</span></h2>
+    <pre><code class="language-python">from enum import Enum
+from functools import wraps
+
+class Role(str, Enum):
+    VIEWER = "viewer"     # Read-only access
+    ANALYST = "analyst"   # Classify documents
+    ADMIN = "admin"       # Full access + model management
+
+def require_role(*allowed_roles: Role):
+    """Dependency factory — returns a dependency that checks the role."""
+    async def role_checker(user: User = Depends(get_current_user)):
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role '{user.role}' not in {allowed_roles}"
+            )
+        return user
+    return role_checker
+
+# Usage in routes:
+@router.post("/classify")
+async def classify(user=Depends(require_role(Role.ANALYST, Role.ADMIN))):
+    ...
+
+@router.delete("/admin/purge-cache")
+async def purge(user=Depends(require_role(Role.ADMIN))):
+    ...</code></pre>
+    <aside class="notes">The require_role factory creates a parameterized dependency. This pattern is cleaner than decorators because it integrates with FastAPI's DI system and appears in OpenAPI docs. Interview question: "How would you implement RBAC in FastAPI?" This is the answer: a dependency factory that returns a checker function.</aside>
+  </section>
+
+  <section>
+    <h2>Auth Security Checklist</h2>
+    <ul class="checklist">
+      <li>Hash passwords with bcrypt (never SHA-256 &mdash; bcrypt is intentionally slow)</li>
+      <li>Short-lived access tokens (15-30 min) + long-lived refresh tokens</li>
+      <li>Store JWT secret in environment variable, never in code</li>
+      <li>Validate <code>exp</code>, <code>iss</code>, <code>aud</code> claims on every request</li>
+      <li>Rate-limit login endpoints (prevent brute force)</li>
+      <li>Return 401 for auth failures, 403 for authorization failures</li>
+      <li class="bad">Never put passwords or tokens in URL query parameters</li>
+      <li class="bad">Never store JWTs in localStorage (XSS vulnerable) &mdash; use httpOnly cookies</li>
+    </ul>
+    <aside class="notes">The 401 vs 403 distinction trips up many developers. 401 = "I don't know who you are" (missing/invalid token). 403 = "I know who you are but you don't have permission." Getting this right in your API shows attention to HTTP semantics. The localStorage warning is a real security issue — XSS can steal tokens. httpOnly cookies are the safe default for browser clients.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 6: Middleware, Error Handling & Structured Logging -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">06</div>
+    <h2>Middleware, Error Handling &amp; Structured Logging</h2>
+    <p style="color: #aaa; font-size: 0.8em;">Cross-cutting concerns that make IntelliAPI production-ready</p>
+    <aside class="notes">Middleware, error handlers, and logging are the "invisible infrastructure" of a production API. They run on every request, shape every error response, and generate every log line. Getting them right is the difference between debugging in 5 minutes vs 5 hours.</aside>
+  </section>
+
+  <section>
+    <h2>The Middleware Stack <span class="tag tag-red">order matters</span></h2>
+    <div class="flow" style="justify-content: center; margin: 12px 0;">
+      <div class="flow-box">CORS</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Request ID</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Timing</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Log Context</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Rate Limit</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">Route</div>
+    </div>
+    <pre><code class="language-python">def create_app() -> FastAPI:
+    app = FastAPI(title="IntelliAPI", lifespan=lifespan)
+
+    # Middleware order: LAST added = OUTERMOST = runs FIRST
+    app.add_middleware(RateLimitMiddleware, rpm=100)     # 4. innermost
+    app.add_middleware(LoggingContextMiddleware)          # 3.
+    app.add_middleware(TimingMiddleware)                  # 2.
+    app.add_middleware(RequestIDMiddleware)               # 1.
+    app.add_middleware(CORSMiddleware,                    # 0. outermost
+        allow_origins=["https://app.intelliapi.com"],
+        allow_credentials=True,
+        allow_methods=["*"], allow_headers=["*"],
+        expose_headers=["X-Request-ID", "X-Process-Time"])
+    return app</code></pre>
+    <p style="font-size: 0.68em; color: var(--warn); margin-top: 8px;">
+      CORS must be outermost &mdash; it must handle OPTIONS preflight before auth rejects it.
+    </p>
+    <aside class="notes">The middleware order is a common interview question. Last added = outermost = runs first. CORS handles preflight OPTIONS requests that don't have auth headers, so it must run before any auth middleware. Request ID must run before logging so the ID is available in log context. Getting the order wrong causes subtle bugs like missing CORS headers on error responses.</aside>
+  </section>
+
+  <section>
+    <h2>Structured Logging with structlog</h2>
+    <pre><code class="language-python">import structlog
+
+# Middleware binds context to all logs in the request
+structlog.contextvars.bind_contextvars(
+    request_id=request.state.request_id,
+    method=request.method,
+    path=request.url.path,
+)
+
+# Any code in the request chain gets context automatically
+logger = structlog.get_logger()
+logger.info("classification_started", model="v2", text_length=1523)
+
+# Output (JSON in production):
+# {"event": "classification_started", "model": "v2", "text_length": 1523,
+#  "request_id": "abc-123", "method": "POST", "path": "/classify",
+#  "level": "info", "timestamp": "2024-01-15T10:30:00Z"}</code></pre>
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-title">Why Structured Logging?</div>
+      <p>JSON logs are queryable: <code>request_id:abc-123 AND level:error</code>. Text logs require regex. At 10K RPM, the difference between 5-second and 5-minute debugging.</p>
+    </div>
+    <aside class="notes">structlog's contextvars integration is the key. Bind request_id once in middleware, and every log call anywhere in the request chain includes it automatically. No passing request_id through function parameters. In production, pipe JSON logs to ELK, Datadog, or CloudWatch. Interview tip: "How do you debug issues in production?" Answer: structured logging with request_id correlation.</aside>
+  </section>
+
+  <section>
+    <h2>Exception Handlers</h2>
+    <pre><code class="language-python">from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+class IntelliAPIError(Exception):
+    def __init__(self, code: str, detail: str, status: int = 400):
+        self.code = code; self.detail = detail; self.status = status
+
+@app.exception_handler(IntelliAPIError)
+async def handle_business_error(request: Request, exc: IntelliAPIError):
+    return JSONResponse(status_code=exc.status, content={
+        "error": exc.code,
+        "detail": exc.detail,
+        "request_id": getattr(request.state, "request_id", None),
+    })
+
+@app.exception_handler(Exception)
+async def handle_unhandled(request: Request, exc: Exception):
+    logger.error("unhandled_error", exc_info=exc)  # Full traceback logged
+    return JSONResponse(status_code=500, content={
+        "error": "internal_error",
+        "detail": "An unexpected error occurred",  # Safe message to client
+        "request_id": getattr(request.state, "request_id", None),
+    })</code></pre>
+    <aside class="notes">Two key principles: (1) Business errors (IntelliAPIError) return structured error codes that clients can programmatically handle. (2) Unhandled errors log the full traceback but return a safe generic message. Never leak stack traces to clients. Always include request_id in error responses so clients can report it for debugging.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 7: Testing FastAPI Applications                 -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">07</div>
+    <h2>Testing FastAPI Applications</h2>
+    <p style="color: #aaa; font-size: 0.8em;">The testing pyramid, dependency overrides, and testcontainers</p>
+    <aside class="notes">FastAPI's architecture — DI, Pydantic, async-first — makes it one of the most testable Python frameworks. The secret weapon is dependency_overrides: swap any dependency (DB, ML model, external API) with a fake for testing.</aside>
+  </section>
+
+  <section>
+    <h2>The Testing Pyramid</h2>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <div class="card-title">Unit Tests (Many)</div>
+        <ul>
+          <li>Pure functions, validators</li>
+          <li>Pydantic model validation</li>
+          <li>Dependency overrides for fakes</li>
+          <li>Fast: &lt;1ms per test</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Integration (Some)</div>
+        <ul>
+          <li>Real DB via testcontainers</li>
+          <li>Full request-response cycle</li>
+          <li>Auth + validation + persistence</li>
+          <li>Slower: 50-200ms per test</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">E2E (Few)</div>
+        <ul>
+          <li>Live server + real deps</li>
+          <li>Contract verification</li>
+          <li>Slowest, most brittle</li>
+          <li>Only for critical paths</li>
+        </ul>
+      </div>
+    </div>
+    <p style="font-size: 0.72em; color: var(--accent); margin-top: 12px;">
+      Golden rule: test behavior, not implementation. Your tests should survive a refactor.
+    </p>
+    <aside class="notes">Interview question: "What's your testing strategy for a FastAPI microservice?" Answer: testing pyramid. Many fast unit tests with dependency overrides and fake services. Some integration tests with testcontainers (real Postgres). Few E2E tests. Target 80%+ coverage on business logic. Always test auth, validation, and error handling.</aside>
+  </section>
+
+  <section>
+    <h2>Dependency Overrides <span class="tag tag-green">key pattern</span></h2>
+    <pre><code class="language-python"># Fake classifier — deterministic, no ML model needed
+class FakeClassifier:
+    async def classify(self, text: str) -> dict:
+        return {"label": "contract", "confidence": 0.92, "model_version": "test-v1"}
+
+# Swap real classifier with fake in tests
+@pytest.fixture(autouse=True)
+def use_fake_classifier():
+    app.dependency_overrides[ClassifierService] = FakeClassifier
+    yield
+    app.dependency_overrides.pop(ClassifierService, None)
+
+# Test the route — classifier is faked, but everything else is real
+@pytest.mark.asyncio
+async def test_classify_returns_label(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/v1/classify",
+        json={"text": "Service Agreement between Acme Corp..."},
+    )
+    assert response.status_code == 200
+    assert response.json()["label"] == "contract"
+    assert 0 <= response.json()["confidence"] <= 1</code></pre>
+    <aside class="notes">dependency_overrides is a dict mapping original dependency to replacement. The replacement must have a compatible interface. Always clean up overrides after tests to prevent state leakage. The FakeClassifier pattern is how you test API behavior without loading a 500MB ML model in every test run.</aside>
+  </section>
+
+  <section>
+    <h2>conftest.py: Test Foundation</h2>
+    <pre><code class="language-python"># tests/conftest.py — shared fixtures for the entire test suite
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from app.main import app
+from app.auth import create_access_token
+
+@pytest_asyncio.fixture
+async def client(db_session) -> AsyncGenerator[AsyncClient, None]:
+    async def _override_get_db():
+        yield db_session
+    app.dependency_overrides[get_db] = _override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+@pytest_asyncio.fixture
+async def auth_client(client) -> AsyncClient:
+    token = create_access_token(data={"sub": "test@example.com", "role": "admin"})
+    client.headers["Authorization"] = f"Bearer {token}"
+    return client</code></pre>
+    <p style="font-size: 0.72em; color: var(--muted); margin-top: 8px;">
+      <code>httpx.AsyncClient</code> with <code>ASGITransport</code> talks directly to FastAPI &mdash; no server needed.
+    </p>
+    <aside class="notes">The key insight: AsyncClient with ASGITransport speaks ASGI directly to your app. No HTTP server is started. This is fast and reliable. The auth_client fixture adds a JWT so all protected endpoints work without per-test auth setup. Interview question: "TestClient vs AsyncClient?" TestClient is sync (Starlette), AsyncClient is async-native (httpx) and required for async fixtures.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 8: Background Tasks, WebSockets & Streaming     -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">08</div>
+    <h2>Background Tasks, WebSockets &amp; Streaming</h2>
+    <p style="color: #aaa; font-size: 0.8em;">Async patterns beyond request-response</p>
+    <aside class="notes">Not every operation fits in a request-response cycle. This lesson covers three patterns: BackgroundTasks (fire-and-forget), SSE (one-way streaming), and WebSockets (bidirectional). Each has specific use cases in ML serving.</aside>
+  </section>
+
+  <section>
+    <h2>BackgroundTasks: Fire and Forget</h2>
+    <pre><code class="language-python">@router.post("/classify", response_model=ClassifyResponse)
+async def classify_document(
+    body: ClassifyRequest,
+    background_tasks: BackgroundTasks,
+    classifier: ClassifierService = Depends(),
+    audit: AuditService = Depends(),
+    user=Depends(get_current_user),
+):
+    # Client waits for this
+    result = await classifier.classify(body.text)
+
+    # Runs AFTER response is sent — client doesn't wait
+    background_tasks.add_task(write_audit_log, audit, user.email, result)
+    background_tasks.add_task(send_webhook, "https://hooks.example.com", result)
+
+    return ClassifyResponse(**result)</code></pre>
+    <table class="compare" style="margin-top: 12px;">
+      <tr><th>Pattern</th><th>Use When</th><th>Limitations</th></tr>
+      <tr><td><strong>BackgroundTasks</strong></td><td>Fire-and-forget, &lt;30s, non-critical</td><td>No retry, dies with process</td></tr>
+      <tr><td><strong>Celery + Redis</strong></td><td>Retries needed, long-running, must survive restarts</td><td>Separate worker, complex setup</td></tr>
+      <tr><td><strong>arq</strong></td><td>Async-native Celery alternative</td><td>Smaller ecosystem</td></tr>
+    </table>
+    <aside class="notes">BackgroundTasks run in-process after the response is sent. They're perfect for audit logs, webhooks, cache warming. But they have no retry, no persistence, and die if the worker crashes. For anything critical (payment processing, email delivery), use Celery. Interview question: "When would you use BackgroundTasks vs Celery?" This table is the answer.</aside>
+  </section>
+
+  <section>
+    <h2>SSE: Streaming LLM Output <span class="tag tag-green">ML essential</span></h2>
+    <pre><code class="language-python">from sse_starlette.sse import EventSourceResponse
+
+async def classify_stream(text: str, classifier) -> AsyncGenerator[str, None]:
+    yield json.dumps({"event": "progress", "stage": "tokenizing", "percent": 10})
+    await asyncio.sleep(0.3)
+
+    yield json.dumps({"event": "progress", "stage": "inference", "percent": 40})
+    result = await classifier.classify(text)
+
+    yield json.dumps({"event": "complete", "percent": 100, "result": result})
+
+@router.post("/classify/stream")
+async def classify_with_progress(request: Request, body: dict, ...):
+    async def event_generator():
+        async for chunk in classify_stream(body["text"], classifier):
+            if await request.is_disconnected():
+                break
+            yield chunk
+    return EventSourceResponse(event_generator())</code></pre>
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-title">SSE vs WebSocket</div>
+      <p>SSE = one-way (server to client). Auto-reconnects, works through proxies, standard HTTP. Use for LLM token streaming, progress updates. WebSocket = bidirectional. Use for chat, collaborative editing.</p>
+    </div>
+    <aside class="notes">SSE is the standard pattern for streaming LLM output. OpenAI's API uses SSE. The key detail: always check request.is_disconnected() in the generator loop to stop work when the client disconnects. Without this check, you waste GPU compute generating tokens nobody will receive.</aside>
+  </section>
+
+  <section>
+    <h2>WebSocket: Interactive Classification</h2>
+    <pre><code class="language-python">class ConnectionManager:
+    def __init__(self):
+        self.active: dict[str, WebSocket] = {}
+
+    async def connect(self, user_id: str, ws: WebSocket):
+        await ws.accept()
+        self.active[user_id] = ws
+
+    async def broadcast(self, data: dict):
+        for ws in self.active.values():
+            await ws.send_json(data)
+
+@router.websocket("/ws/classify")
+async def websocket_classify(ws: WebSocket, classifier=Depends()):
+    user_id = await ws_authenticate(ws)
+    if not user_id:
+        await ws.close(code=4001, reason="Auth failed")
+        return
+    await manager.connect(user_id, ws)
+    try:
+        while True:
+            data = await ws.receive_json()
+            if data.get("type") == "classify":
+                result = await classifier.classify(data["text"])
+                await ws.send_json({"type": "result", **result})
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)</code></pre>
+    <aside class="notes">WebSocket auth is different from HTTP auth. You can't use Authorization headers. Three patterns: (1) token in query params, (2) token in first message, (3) session cookies. Behind a load balancer, WebSocket connections are sticky to one instance. Use Redis pub/sub to broadcast across instances. Interview tip: mention the sticky connection problem — it shows you've thought about scale.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 9: Production Deployment                        -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">09</div>
+    <h2>Production Deployment</h2>
+    <p style="color: #aaa; font-size: 0.8em;">Gunicorn, Docker, health checks, graceful shutdown, observability</p>
+    <aside class="notes">You've built IntelliAPI across eight lessons. Now ship it. This lesson covers the production stack: ASGI server topology, containerization, health probes, graceful shutdown, and Prometheus metrics. Every topic maps to a real production incident you'll encounter.</aside>
+  </section>
+
+  <section>
+    <h2>Gunicorn + Uvicorn Architecture</h2>
+    <div class="flow" style="justify-content: center; margin: 12px 0;">
+      <div class="flow-box">Nginx / Traefik</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">Gunicorn Master</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Uvicorn Worker 1</div>
+    </div>
+    <div class="flow" style="justify-content: center; margin: 0;">
+      <div class="flow-box" style="visibility: hidden;">placeholder</div>
+      <div class="flow-arrow" style="visibility: hidden;">&rarr;</div>
+      <div class="flow-box" style="visibility: hidden;">placeholder</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Uvicorn Worker N</div>
+    </div>
+    <pre><code class="language-python"># gunicorn.conf.py
+import multiprocessing, os
+
+workers = int(os.getenv("WEB_CONCURRENCY", multiprocessing.cpu_count() + 1))
+worker_class = "uvicorn.workers.UvicornWorker"
+worker_tmp_dir = "/dev/shm"    # RAM-backed tmpdir (Docker best practice)
+max_requests = 2000             # Recycle workers to prevent memory leaks
+max_requests_jitter = 200       # Prevent thundering herd on recycle
+timeout = 120                   # Kill hung workers (set higher for AI inference)
+graceful_timeout = 30           # Time to finish in-flight requests on shutdown</code></pre>
+    <aside class="notes">Gunicorn is the process manager; each Uvicorn worker runs its own async event loop. A crash in one worker doesn't affect others, and Gunicorn auto-restarts failed workers. Key gotcha for ML: if each worker loads a 500MB model, 4 workers = 2GB RAM. For GPU inference, use 1 worker per GPU and rely on the async event loop for concurrency.</aside>
+  </section>
+
+  <section>
+    <h2>Health Probes <span class="tag tag-red">get this wrong = cascading failure</span></h2>
+    <table class="compare">
+      <tr><th>Probe</th><th>Purpose</th><th>Fails &rarr;</th></tr>
+      <tr><td><strong>Liveness</strong></td><td>Is the process alive?</td><td>Container is <strong>killed and restarted</strong></td></tr>
+      <tr><td><strong>Readiness</strong></td><td>Can it serve traffic?</td><td>Removed from load balancer (not killed)</td></tr>
+      <tr><td><strong>Startup</strong></td><td>Has it finished initializing?</td><td>Liveness/readiness suppressed until passing</td></tr>
+    </table>
+    <pre><code class="language-python">@router.get("/health/live")
+async def liveness():
+    """TRIVIAL — no DB calls, no external deps. If this fails, kill me."""
+    return {"status": "alive", "uptime": round(time.time() - START_TIME, 1)}
+
+@router.get("/health/ready")
+async def readiness(db=Depends(get_db), redis=Depends(get_redis)):
+    """Check all critical dependencies. If this fails, remove from LB."""
+    await db.execute("SELECT 1")
+    await redis.ping()
+    return {"status": "ready"}</code></pre>
+    <p style="font-size: 0.68em; color: var(--warn); margin-top: 8px;">
+      If liveness calls the DB and the DB is slow, Kubernetes kills <em>healthy</em> containers. Keep liveness trivial.
+    </p>
+    <aside class="notes">The liveness vs readiness distinction is a top interview question. Liveness must be trivial (return 200, no deps). If it accidentally depends on the database and the DB is slow, Kubernetes kills the container, which increases DB load, which makes other containers fail their liveness checks — cascading failure. Readiness checks every dependency. Startup probes are essential for ML model loading (60+ seconds).</aside>
+  </section>
+
+  <section>
+    <h2>Graceful Shutdown &amp; Observability</h2>
+    <pre><code class="language-python">@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # STARTUP
+    await model_registry.load_all()
+    yield
+    # SHUTDOWN (SIGTERM received)
+    logger.info("Shutting down gracefully...")
+    await model_registry.stop_accepting()    # Stop new inference jobs
+    await model_registry.drain(timeout=15.0) # Finish in-flight requests
+    await engine.dispose()                    # Close DB connections
+    await redis_pool.aclose()                 # Close Redis pool
+    logger.info("Shutdown complete.")</code></pre>
+    <div class="card-grid cols-2" style="margin-top: 12px;">
+      <div class="card">
+        <div class="card-title">Prometheus Metrics</div>
+        <ul>
+          <li><code>http_requests_total</code> (counter)</li>
+          <li><code>http_request_duration_seconds</code> (histogram)</li>
+          <li><code>inference_duration_seconds</code> (histogram)</li>
+          <li>Normalize paths to avoid cardinality explosion</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">OpenTelemetry Tracing</div>
+        <ul>
+          <li>Auto-instrument FastAPI, httpx, SQLAlchemy</li>
+          <li>Trace: request &rarr; auth &rarr; cache &rarr; model &rarr; DB</li>
+          <li>Export to Jaeger, Tempo, or Datadog</li>
+          <li>Find the slow span in complex request chains</li>
+        </ul>
+      </div>
+    </div>
+    <aside class="notes">Graceful shutdown order matters: stop accepting new work, drain in-flight requests, close connections. If you close connections first, pending queries fail. The Prometheus metrics middleware must normalize URL paths — /documents/123 becomes /documents/{id} — to prevent cardinality explosion. Every unique label combination is a time series. With 1M document IDs, you'd create 1M time series and crash Prometheus.</aside>
+  </section>
+
+  <section>
+    <h2>Production Dockerfile</h2>
+    <pre><code class="language-docker"># Stage 1: Builder
+FROM python:3.12-slim AS builder
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Stage 2: Production
+FROM python:3.12-slim AS production
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /install /usr/local
+COPY --chown=appuser:appuser . .
+USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health/live || exit 1
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]</code></pre>
+    <p style="font-size: 0.68em; color: var(--accent);">Multi-stage: ~150MB vs ~800MB. Non-root user. HEALTHCHECK. Builder pattern from Module 1.</p>
+    <aside class="notes">This ties back to Module 1 (Docker). Multi-stage build keeps gcc out of production. Non-root user limits blast radius. HEALTHCHECK gives orchestrators a built-in liveness signal. The --start-period=10s gives the app time to load ML models before the health check starts failing. For large models, increase this to 60-120s.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- LESSON 10: System Design — AI Inference Platform        -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <div class="section-number">10</div>
+    <h2>System Design: AI Inference Platform</h2>
+    <p style="color: #aaa; font-size: 0.8em;">The capstone &mdash; designing IntelliAPI at 10K RPM</p>
+    <aside class="notes">This is the capstone lesson. It's structured as a system design interview answer. The prompt: "Design a scalable AI inference platform that handles document classification and summarization at 10K RPM." Every concept from the previous 9 lessons comes together here.</aside>
+  </section>
+
+  <section>
+    <h2>Architecture Overview</h2>
+    <div class="flow" style="justify-content: center; margin: 12px 0;">
+      <div class="flow-box">Load Balancer</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent);">API Servers (CPU)</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box">Redis (Cache + Queue)</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-box" style="border-color: var(--accent2);">GPU Workers</div>
+    </div>
+    <div class="card-grid cols-2" style="margin-top: 14px;">
+      <div class="pattern-card">
+        <div class="ptitle">Sync Path: Classification (&lt;200ms)</div>
+        <div class="pdesc">Client &rarr; API &rarr; cache check &rarr; GPU batcher &rarr; result. Low latency, high throughput via dynamic batching.</div>
+        <div class="pstack">LB &rarr; FastAPI (CPU) &rarr; Redis cache &rarr; ONNX model (GPU)</div>
+      </div>
+      <div class="pattern-card">
+        <div class="ptitle">Async Path: Summarization (2-8s)</div>
+        <div class="pdesc">Client &rarr; API &rarr; enqueue &rarr; 202 Accepted. GPU worker processes from priority queue. Client polls /jobs/{id}.</div>
+        <div class="pstack">LB &rarr; FastAPI (CPU) &rarr; Redis queue &rarr; GPU worker &rarr; Redis result</div>
+      </div>
+    </div>
+    <aside class="notes">Two-path architecture is the key insight. Classification is fast enough for synchronous response. Summarization is too slow — holding HTTP connections for 5+ seconds wastes API server resources. The async path returns 202 immediately and the client polls for results. This is the standard pattern for mixed-latency AI systems.</aside>
+  </section>
+
+  <section>
+    <h2>Dynamic Batching <span class="tag tag-green">10-15x throughput</span></h2>
+    <pre><code class="language-python">class DynamicBatcher:
+    """Collect individual requests into GPU batches."""
+
+    def __init__(self, model_fn, max_batch_size=32, max_wait_ms=10.0):
+        self.model_fn = model_fn
+        self.max_batch_size = max_batch_size
+        self.max_wait_ms = max_wait_ms
+        self._queue: asyncio.Queue[BatchItem] = asyncio.Queue()
+
+    async def submit(self, input_data, timeout=30.0) -> Any:
+        """Submit one request — returns when the batch result is ready."""
+        item = BatchItem(input_data=input_data)
+        await self._queue.put(item)
+        return await asyncio.wait_for(item.future, timeout=timeout)
+
+    async def _collect_batch(self) -> list[BatchItem]:
+        """Wait for items until batch is full OR max_wait_ms expires."""
+        batch = [await self._queue.get()]  # Wait for at least one
+        deadline = time.time() + (self.max_wait_ms / 1000)
+        while len(batch) < self.max_batch_size and time.time() < deadline:
+            try:
+                item = await asyncio.wait_for(self._queue.get(), deadline - time.time())
+                batch.append(item)
+            except asyncio.TimeoutError:
+                break
+        return batch</code></pre>
+    <p style="font-size: 0.72em; color: var(--accent); margin-top: 8px;">
+      A batch of 32 items is only 2-3x slower than a single item on a GPU. Batching = 10-15x throughput gain.
+    </p>
+    <aside class="notes">This is the single most impactful optimization for GPU inference. Each caller gets an asyncio.Future for their individual result. The batcher waits up to 10ms to collect items, then runs one forward pass. The 10ms collection latency is invisible to users but allows much larger batches. Interview gold: explain why batching works (GPU parallelism) and the latency-throughput tradeoff (max_wait_ms).</aside>
+  </section>
+
+  <section>
+    <h2>Resilience Patterns</h2>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <div class="card-title">Circuit Breaker</div>
+        <ul>
+          <li>CLOSED &rarr; OPEN after 5 failures</li>
+          <li>OPEN: fail fast with 503</li>
+          <li>HALF-OPEN: test with 1 request</li>
+          <li>Per-service: <code>circuit_db</code>, <code>circuit_model</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Load Shedding</div>
+        <ul>
+          <li>80% capacity: drop free-tier</li>
+          <li>90% capacity: drop all except critical</li>
+          <li>Health checks always pass through</li>
+          <li>Return 503, not 429</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Result Caching</div>
+        <ul>
+          <li>Content-addressable: hash(text + model_version)</li>
+          <li>Same document = same classification</li>
+          <li>30-40% cache hit rate in enterprise</li>
+          <li>Each hit saves one GPU inference</li>
+        </ul>
+      </div>
+    </div>
+    <aside class="notes">Three resilience patterns that work together. Circuit breaker prevents cascading failures when a downstream service is dying. Load shedding protects the system under extreme load by dropping low-priority requests first. Result caching eliminates redundant GPU compute. Together they make the system robust under failure and overload. Interview tip: describe all three as layers of defense.</aside>
+  </section>
+
+  <section>
+    <h2>Capacity Planning <span class="tag tag-blue">interview math</span></h2>
+    <div class="exit-grid">
+      <div class="exit-card ok">
+        <div class="code">~$250</div>
+        <div class="desc"><strong>API Servers</strong><br>2x c6i.xlarge (CPU)<br>Handle 167 RPS easily</div>
+      </div>
+      <div class="exit-card warn">
+        <div class="code">~$6,600</div>
+        <div class="desc"><strong>GPU Workers</strong><br>9x g5.xlarge for summarization<br>2x for classification</div>
+      </div>
+      <div class="exit-card ok">
+        <div class="code">~$280</div>
+        <div class="desc"><strong>Data Stores</strong><br>Redis &lt;1GB, Postgres minimal<br>Single instances sufficient</div>
+      </div>
+    </div>
+    <p style="font-size: 0.75em; color: #ddd; margin-top: 14px; text-align: center;">
+      Total: <strong>~$7,300/mo</strong> at 10K RPM. GPU cost = 90% of total.
+    </p>
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-title" style="color: var(--warn);">Cost Optimization Levers</div>
+      <ul>
+        <li><strong>Caching</strong> &mdash; 30% hit rate = 30% fewer GPU inferences</li>
+        <li><strong>Batching</strong> &mdash; 10-15x better GPU utilization</li>
+        <li><strong>Quantization</strong> &mdash; FP16/INT8 = 2-4x faster, minimal accuracy loss</li>
+        <li>Combined: reduce GPU count by 60-70%, cost drops to ~$3K/mo</li>
+      </ul>
+    </div>
+    <aside class="notes">Always show your math in system design interviews. GPU cost dominates (90% of total). The three optimization levers — caching, batching, quantization — can reduce GPU count by 60-70%. Autoscaling and off-peak scale-down reduce real cost another 40%. Interviewers love seeing candidates who think about cost, not just architecture.</aside>
+  </section>
+
+  <section>
+    <h2>Scaling Strategy</h2>
+    <table class="compare">
+      <tr><th>Component</th><th>Scaling Strategy</th><th>Trigger</th></tr>
+      <tr><td>API servers (CPU)</td><td>Horizontal Pod Autoscaler</td><td>CPU &gt; 60% or RPS &gt; threshold</td></tr>
+      <tr><td>Classification workers (GPU)</td><td>HPA with custom metrics</td><td>GPU utilization &gt; 70%</td></tr>
+      <tr><td>Summarization workers (GPU)</td><td>KEDA (queue-based)</td><td>Queue depth &gt; 0 (scale-to-zero)</td></tr>
+      <tr><td>Redis</td><td>Vertical or Redis Cluster</td><td>Memory &gt; 70%</td></tr>
+      <tr><td>PostgreSQL</td><td>Read replicas + PgBouncer</td><td>Connection count &gt; 80%</td></tr>
+    </table>
+    <div class="card" style="margin-top: 14px;">
+      <div class="card-title">Four Golden Signals (Monitor These)</div>
+      <p><strong>Latency</strong> &mdash; p50, p95, p99 (not averages). <strong>Traffic</strong> &mdash; sudden drop = upstream failure. <strong>Errors</strong> &mdash; 5xx rate &gt; 1%. <strong>Saturation</strong> &mdash; GPU util, queue depth, connection pool usage.</p>
+    </div>
+    <aside class="notes">KEDA for summarization workers is the key detail: scale-to-zero when the queue is empty saves significant GPU cost during off-peak hours. The four golden signals from Google's SRE book are the minimum monitoring. Saturation (queue depth) is the leading indicator — when the queue grows, latency follows. This is your early warning system.</aside>
+  </section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- RECAP                                                   -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+  <section>
+    <h2>Module Recap <span class="tag tag-green">10 lessons in 10 minutes</span></h2>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <div class="card-title">Foundation (1-3)</div>
+        <ul>
+          <li><strong>L1:</strong> FastAPI = async + Pydantic + DI + auto docs. Purpose-built for ML APIs.</li>
+          <li><strong>L2:</strong> Event loop model. <code>await</code> for I/O, <code>to_thread()</code> for CPU. uvloop for speed.</li>
+          <li><strong>L3:</strong> Pydantic V2 (Rust core). Schemas are contracts. <code>computed_field</code>, <code>from_attributes</code>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Architecture (4-6)</div>
+        <ul>
+          <li><strong>L4:</strong> <code>Depends()</code> for request resources. <code>lifespan</code> for app resources. Yield = cleanup.</li>
+          <li><strong>L5:</strong> JWT + OAuth2PasswordBearer. RBAC via dependency factories. 401 vs 403.</li>
+          <li><strong>L6:</strong> Middleware order matters. structlog contextvars. Exception handlers with request_id.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Quality &amp; Real-Time (7-8)</div>
+        <ul>
+          <li><strong>L7:</strong> <code>dependency_overrides</code> for fakes. AsyncClient + ASGITransport. testcontainers for integration.</li>
+          <li><strong>L8:</strong> BackgroundTasks (fire-forget). SSE (LLM streaming). WebSockets (bidirectional). Sticky connections.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Production &amp; Design (9-10)</div>
+        <ul>
+          <li><strong>L9:</strong> Gunicorn + Uvicorn workers. Liveness vs readiness. Graceful shutdown. Prometheus + OTel.</li>
+          <li><strong>L10:</strong> Sync + async paths. Dynamic batching. Circuit breaker + load shedding + caching. ~$7K/mo at 10K RPM.</li>
+        </ul>
+      </div>
+    </div>
+    <aside class="notes">This recap is your interview cheat sheet for FastAPI. Foundation: WHY FastAPI and HOW async/Pydantic work. Architecture: HOW to structure a production app with DI, auth, and middleware. Quality: HOW to test and stream. Production: HOW to deploy, monitor, and design scalable AI inference systems.</aside>
+  </section>
+
+  <section class="center">
+    <h2>What's Next</h2>
+    <p style="color: #aaa; font-size: 0.8em;">You can build and deploy an AI API. Now store its data and orchestrate it at scale.</p>
+    <div class="card-grid cols-3" style="margin-top: 24px;">
+      <div class="card" style="text-align: center;">
+        <div class="card-title">Module 3</div>
+        <p>Databases</p>
+        <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">PostgreSQL, MongoDB, Redis deep dive</p>
+      </div>
+      <div class="card" style="text-align: center; border-color: var(--accent);">
+        <div class="card-title">Module 4</div>
+        <p>Kubernetes Fundamentals</p>
+        <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">Deploy IntelliAPI to a real cluster</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div class="card-title">Module 6</div>
+        <p>CI/CD Pipelines</p>
+        <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">Automate build, test, deploy</p>
+      </div>
+    </div>
+    <p style="margin-top: 28px; font-size: 0.7em; color: var(--muted);">
+      AI Backend Engineer Learning Path &middot; aiengpath.dev
+    </p>
+  </section>
+</section>
+
+
+</div><!-- .slides -->
+</div><!-- .reveal -->
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/zoom/zoom.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    progress: true,
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    center: false,
+    margin: 0.08,
+    width: 1200,
+    height: 700,
+    plugins: [RevealHighlight, RevealNotes, RevealZoom],
+    highlight: {
+      highlightOnLoad: true,
+    },
+  });
+</script>
+</body>
+</html>

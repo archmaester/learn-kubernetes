@@ -4,7 +4,7 @@
 // Running project: every lesson adds to the same codebase, from first endpoint to deployed service.
 (function patchFastAPILessons() {
   const m = CURRICULUM.phases[0].modules[1]; // phase-1 (index 0), second module
-  m.presentation = "fastapi-presentation.html";
+  m.presentation = "modules/m2-fastapi/presentation.html";
 
   m.lessons = [
 

@@ -4,7 +4,7 @@
 (function patchDatabaseLessons() {
   const m = CURRICULUM.phases[0].modules[2]; // phase-1, third module (m3)
 
-  m.presentation = "db-presentation.html";
+  m.presentation = "modules/m3-databases/presentation.html";
 
   m.lessons = [
 

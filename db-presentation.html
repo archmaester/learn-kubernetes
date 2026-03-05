@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Databases Deep Dive — AI Backend Engineer Series</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css" />
+  <style>
+    :root {
+      --accent: #00d4aa;
+      --accent2: #4f9cf9;
+      --warn: #ff6b6b;
+      --muted: #888;
+      --card-bg: rgba(255,255,255,0.05);
+    }
+
+    .reveal {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      text-transform: none;
+      letter-spacing: -0.02em;
+    }
+
+    .reveal h1 { font-size: 2.4em; font-weight: 800; }
+    .reveal h2 { font-size: 1.6em; font-weight: 700; color: var(--accent); }
+    .reveal h3 { font-size: 1.15em; font-weight: 600; color: var(--accent2); }
+
+    .reveal section { text-align: left; }
+    .reveal .center { text-align: center; }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.55em;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .tag-green  { background: rgba(0,212,170,0.2); color: var(--accent); border: 1px solid var(--accent); }
+    .tag-blue   { background: rgba(79,156,249,0.2); color: var(--accent2); border: 1px solid var(--accent2); }
+    .tag-red    { background: rgba(255,107,107,0.2); color: var(--warn); border: 1px solid var(--warn); }
+    .tag-gray   { background: rgba(255,255,255,0.1); color: #ccc; border: 1px solid #555; }
+
+    .card-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .card .card-title {
+      font-size: 0.75em;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .card p, .card li { font-size: 0.72em; line-height: 1.5; color: #ddd; }
+    .card ul { padding-left: 1.2em; margin: 0; }
+
+    .reveal pre {
+      width: 100%;
+      box-shadow: none;
+      border-radius: 8px;
+      font-size: 0.65em;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7em;
+    }
+    .compare th {
+      background: rgba(0,212,170,0.15);
+      color: var(--accent);
+      padding: 8px 14px;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 2px solid var(--accent);
+    }
+    .compare td {
+      padding: 7px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      color: #ddd;
+      vertical-align: top;
+    }
+    .compare tr:hover td { background: rgba(255,255,255,0.03); }
+
+    .timeline {
+      display: flex;
+      gap: 0;
+      margin: 10px 0;
+    }
+    .timeline-step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+    .timeline-step::after {
+      content: '\2192';
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1.2em;
+    }
+    .timeline-step:last-child::after { display: none; }
+    .timeline-step .ts-box {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 10px 8px;
+      margin: 0 6px;
+    }
+    .timeline-step .ts-label { font-size: 0.6em; color: var(--accent); font-weight: 700; }
+    .timeline-step .ts-desc  { font-size: 0.55em; color: #aaa; margin-top: 4px; }
+
+    .checklist { list-style: none; padding: 0; margin: 0; }
+    .checklist li {
+      padding: 5px 0 5px 28px;
+      position: relative;
+      font-size: 0.75em;
+      color: #ddd;
+      line-height: 1.4;
+    }
+    .checklist li::before {
+      content: '\2713';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .checklist li.bad::before {
+      content: '\2717';
+      color: var(--warn);
+    }
+
+    .cover-meta { color: var(--muted); font-size: 0.75em; margin-top: 8px; }
+    .cover-module { color: var(--accent); font-size: 0.9em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .section-number {
+      font-size: 5em;
+      font-weight: 900;
+      color: rgba(0,212,170,0.12);
+      line-height: 1;
+      margin-bottom: -10px;
+    }
+
+    .reveal .speaker-notes { font-size: 1em; }
+    .reveal .progress { color: var(--accent); }
+    .reveal .slide-number { color: var(--muted); }
+
+    .reveal code:not(.hljs) {
+      background: rgba(255,255,255,0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      color: #f8c55d;
+    }
+
+    .stat-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .stat {
+      text-align: center;
+      flex: 1;
+    }
+    .stat-num {
+      font-size: 2.2em;
+      font-weight: 900;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 0.6em;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 0.7em;
+    }
+    .flow-box {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 6px 12px;
+      white-space: nowrap;
+    }
+    .flow-arrow { color: var(--muted); font-size: 1.2em; }
+
+    .pattern-card {
+      border-left: 3px solid var(--accent);
+      background: var(--card-bg);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 10px;
+    }
+    .pattern-card .ptitle { font-size: 0.72em; font-weight: 700; color: var(--accent); }
+    .pattern-card .pdesc  { font-size: 0.65em; color: #bbb; margin-top: 4px; }
+    .pattern-card .pstack { font-size: 0.6em; color: #888; font-family: monospace; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- COVER                                                   -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section class="center">
+  <div class="cover-module">AI Backend Engineer Series &middot; Module 3</div>
+  <h1 style="margin-top: 16px;">Databases<br>Deep Dive</h1>
+  <p style="color: #aaa; font-size: 0.8em; margin-top: 16px;">
+    PostgreSQL, MongoDB, Redis — from internals to system design.<br>
+    10 lessons. Three databases. One cohesive architecture.
+  </p>
+  <div class="stat-row" style="margin-top: 32px;">
+    <div class="stat"><div class="stat-num">10</div><div class="stat-label">Lessons</div></div>
+    <div class="stat"><div class="stat-num">~5h</div><div class="stat-label">Read time</div></div>
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">Databases mastered</div></div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: PostgreSQL Internals                         -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">01</div>
+  <h2>PostgreSQL Internals</h2>
+  <p style="color: #aaa; font-size: 0.8em;">How Postgres stores, retrieves, and protects your data.</p>
+</section>
+
+<section>
+  <h3>Architecture at a Glance</h3>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <div class="card-title">Process Model</div>
+      <p>Process-per-connection. Postmaster forks a backend for each client. 5-10 MB per connection.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Shared Memory</div>
+      <p>Shared buffers (page cache), WAL buffers, lock tables. Set shared_buffers to 25% of RAM.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Background Workers</div>
+      <p>WAL writer, checkpointer, autovacuum, background writer, stats collector.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>MVCC: Multi-Version Concurrency Control</h3>
+  <ul class="checklist">
+    <li>UPDATE never overwrites — creates a new tuple version, marks old one dead</li>
+    <li>Each transaction sees a snapshot — reads never block writes, writes never block reads</li>
+    <li>Dead tuples accumulate until VACUUM reclaims the space</li>
+    <li class="bad">Table bloat if autovacuum can't keep up with update rate</li>
+  </ul>
+  <div class="flow" style="margin-top: 16px;">
+    <div class="flow-box">UPDATE row</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">Old tuple: xmax = current_txid</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">New tuple: xmin = current_txid</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">VACUUM cleans old tuple later</div>
+  </div>
+</section>
+
+<section>
+  <h3>Write-Ahead Log (WAL)</h3>
+  <div class="timeline">
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">1. WAL Buffer</div>
+        <div class="ts-desc">Write log record to memory</div>
+      </div>
+    </div>
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">2. fsync WAL</div>
+        <div class="ts-desc">Flush to pg_wal/ on disk</div>
+      </div>
+    </div>
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">3. COMMIT returns</div>
+        <div class="ts-desc">Client gets OK</div>
+      </div>
+    </div>
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">4. Checkpoint</div>
+        <div class="ts-desc">Dirty pages &rarr; data files</div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size: 0.7em; color: #aaa; margin-top: 12px;">
+    WAL guarantees <strong>durability</strong> and enables <strong>replication</strong>. Same mechanism for both.
+  </p>
+</section>
+
+<section>
+  <h3>VACUUM: The Garbage Collector</h3>
+  <table class="compare">
+    <tr><th>Type</th><th>What It Does</th><th>Locks?</th></tr>
+    <tr><td>VACUUM</td><td>Marks dead tuple space reusable. Does NOT return space to OS.</td><td>None (concurrent)</td></tr>
+    <tr><td>VACUUM FULL</td><td>Rewrites entire table. Returns space to OS.</td><td>EXCLUSIVE (blocks all)</td></tr>
+    <tr><td>VACUUM ANALYZE</td><td>VACUUM + update planner statistics</td><td>None</td></tr>
+  </table>
+  <p style="font-size: 0.65em; color: var(--warn); margin-top: 12px;">
+    If autovacuum falls behind &rarr; table bloat &rarr; slow queries &rarr; TX ID wraparound (Postgres shuts down!)
+  </p>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: Transactions & Isolation                      -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">02</div>
+  <h2>Transactions & Isolation</h2>
+  <p style="color: #aaa; font-size: 0.8em;">Making concurrent access safe.</p>
+</section>
+
+<section>
+  <h3>ACID Guarantees</h3>
+  <table class="compare">
+    <tr><th>Property</th><th>What It Guarantees</th><th>Without It</th></tr>
+    <tr><td><strong>Atomicity</strong></td><td>All or nothing</td><td>Money vanishes mid-transfer</td></tr>
+    <tr><td><strong>Consistency</strong></td><td>Constraints always hold</td><td>Balance goes negative</td></tr>
+    <tr><td><strong>Isolation</strong></td><td>No interference between txns</td><td>Half-written order visible</td></tr>
+    <tr><td><strong>Durability</strong></td><td>COMMIT survives crashes</td><td>Committed data lost on restart</td></tr>
+  </table>
+</section>
+
+<section>
+  <h3>Isolation Levels</h3>
+  <table class="compare">
+    <tr><th>Level</th><th>Dirty Read</th><th>Non-Repeatable</th><th>Phantom</th><th>Write Skew</th></tr>
+    <tr><td>READ COMMITTED <span class="tag tag-green">default</span></td><td>No</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>REPEATABLE READ</td><td>No</td><td>No</td><td>No*</td><td>Yes</td></tr>
+    <tr><td>SERIALIZABLE</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+  </table>
+  <p style="font-size: 0.6em; color: #aaa; margin-top: 8px;">
+    *Postgres REPEATABLE READ uses snapshot isolation — prevents phantoms too (stronger than SQL standard).
+  </p>
+</section>
+
+<section>
+  <h3>Locking Strategies</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">Pessimistic</div>
+      <p><code>SELECT ... FOR UPDATE</code></p>
+      <ul>
+        <li>Lock the row before reading</li>
+        <li>Other transactions wait</li>
+        <li>Best for: high contention, short txns</li>
+        <li>Variant: <code>SKIP LOCKED</code> for job queues</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Optimistic</div>
+      <p><code>WHERE version = N</code></p>
+      <ul>
+        <li>Read without locking</li>
+        <li>On write, check version unchanged</li>
+        <li>Retry on conflict (rowcount = 0)</li>
+        <li>Best for: low contention, longer txns</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: Indexes & Query Optimization                  -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">03</div>
+  <h2>Indexes & Query Optimization</h2>
+  <p style="color: #aaa; font-size: 0.8em;">Making queries fast as data grows.</p>
+</section>
+
+<section>
+  <h3>Index Types</h3>
+  <table class="compare">
+    <tr><th>Type</th><th>Best For</th><th>Operators</th><th>Size</th></tr>
+    <tr><td><strong>B-tree</strong> <span class="tag tag-green">default</span></td><td>Equality, range, ORDER BY</td><td><code>=, <, >, BETWEEN, LIKE 'pre%'</code></td><td>Medium</td></tr>
+    <tr><td><strong>GIN</strong></td><td>JSONB, arrays, full-text search</td><td><code>@>, &&, @@, ?</code></td><td>Large</td></tr>
+    <tr><td><strong>BRIN</strong></td><td>Time-series, naturally ordered</td><td><code>=, <, ></code></td><td>Tiny (1000x smaller)</td></tr>
+    <tr><td><strong>Hash</strong></td><td>Equality only</td><td><code>=</code></td><td>Medium</td></tr>
+  </table>
+</section>
+
+<section>
+  <h3>Index Superpowers</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">Partial Index</div>
+      <p>Only index rows matching a condition. Tiny and fast.</p>
+      <pre><code class="language-sql">CREATE INDEX idx_pending
+ON orders(created_at)
+WHERE status = 'pending';</code></pre>
+    </div>
+    <div class="card">
+      <div class="card-title">Covering Index</div>
+      <p>Include columns to avoid heap lookups entirely.</p>
+      <pre><code class="language-sql">CREATE INDEX idx_cover
+ON orders(user_id, status)
+INCLUDE (total, created_at);</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>EXPLAIN ANALYZE Cheat Sheet</h3>
+  <table class="compare">
+    <tr><th>Red Flag</th><th>Problem</th><th>Fix</th></tr>
+    <tr><td>Seq Scan on large table</td><td>Full table scan</td><td>Add index on filtered column</td></tr>
+    <tr><td>Rows Removed by Filter: huge</td><td>Index not selective enough</td><td>Composite or partial index</td></tr>
+    <tr><td>Buffers: shared read=large</td><td>Disk I/O (not cached)</td><td>Increase shared_buffers or covering index</td></tr>
+    <tr><td>Sort Method: external merge Disk</td><td>Sort spills to disk</td><td>Increase work_mem or add matching index</td></tr>
+    <tr><td>actual rows >> estimated</td><td>Stale statistics</td><td>Run <code>ANALYZE tablename</code></td></tr>
+  </table>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: Advanced SQL                                  -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">04</div>
+  <h2>Advanced SQL</h2>
+  <p style="color: #aaa; font-size: 0.8em;">Window functions, CTEs, JSONB, full-text search.</p>
+</section>
+
+<section>
+  <h3>Window Functions</h3>
+  <p style="font-size: 0.72em; color: #ddd;">Compute aggregates <strong>without</strong> collapsing rows. Run AFTER WHERE/GROUP BY, BEFORE ORDER BY.</p>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <div class="card-title">Ranking</div>
+      <p><code>ROW_NUMBER()</code>, <code>RANK()</code>, <code>DENSE_RANK()</code></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Running Totals</div>
+      <p><code>SUM() OVER (ORDER BY ...)</code></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Neighbors</div>
+      <p><code>LAG()</code>, <code>LEAD()</code> for prev/next values</p>
+    </div>
+  </div>
+  <pre style="margin-top: 12px;"><code class="language-sql">-- Top 3 orders per user
+WITH ranked AS (
+  SELECT *, ROW_NUMBER() OVER (
+    PARTITION BY user_id ORDER BY total DESC
+  ) AS rn FROM orders
+)
+SELECT * FROM ranked WHERE rn <= 3;</code></pre>
+</section>
+
+<section>
+  <h3>JSONB &amp; Full-Text Search</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">JSONB</div>
+      <ul>
+        <li><code>@></code> containment (GIN indexed)</li>
+        <li><code>->></code> extract as text</li>
+        <li><code>jsonb_set()</code> update nested values</li>
+        <li>Use for flexible metadata, not main columns</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Full-Text Search</div>
+      <ul>
+        <li><code>tsvector</code> + <code>tsquery</code></li>
+        <li><code>setweight()</code> to boost title over body</li>
+        <li><code>ts_rank()</code> for relevance sorting</li>
+        <li>GIN index for sub-ms lookups</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: SQLAlchemy & Alembic                          -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">05</div>
+  <h2>SQLAlchemy &amp; Alembic</h2>
+  <p style="color: #aaa; font-size: 0.8em;">The Python database layer.</p>
+</section>
+
+<section>
+  <h3>SQLAlchemy 2.0 Key Concepts</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">Engine + Session</div>
+      <ul>
+        <li><code>create_async_engine</code> — connection pool</li>
+        <li><code>async_sessionmaker</code> — unit of work</li>
+        <li><code>expire_on_commit=False</code> — critical for async</li>
+        <li>Separate engines for read/write</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Models</div>
+      <ul>
+        <li><code>mapped_column()</code> with type hints</li>
+        <li><code>lazy="raise"</code> — prevent N+1</li>
+        <li><code>selectinload</code> for collections</li>
+        <li><code>joinedload</code> for single objects</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>Zero-Downtime Migrations</h3>
+  <ul class="checklist">
+    <li>Add column as NULL first, backfill, then add NOT NULL</li>
+    <li>Use <code>CREATE INDEX CONCURRENTLY</code> (no write lock)</li>
+    <li>Never rename columns — add new, backfill, drop old</li>
+    <li>Never <code>ALTER COLUMN TYPE</code> on large tables (rewrites table)</li>
+    <li class="bad">Autogenerate misses partial indexes and CHECK constraints</li>
+  </ul>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: Connection Pooling & Replication               -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">06</div>
+  <h2>Pooling &amp; Replication</h2>
+  <p style="color: #aaa; font-size: 0.8em;">Scaling beyond a single connection.</p>
+</section>
+
+<section>
+  <h3>Connection Pooling Stack</h3>
+  <div class="flow" style="justify-content: center;">
+    <div class="flow-box">200 API Workers</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">PgBouncer (transaction mode)</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">50 PG Connections</div>
+  </div>
+  <div class="stat-row" style="margin-top: 24px;">
+    <div class="stat"><div class="stat-num">5-10 MB</div><div class="stat-label">per PG connection</div></div>
+    <div class="stat"><div class="stat-num">1000</div><div class="stat-label">clients via PgBouncer</div></div>
+    <div class="stat"><div class="stat-num">50</div><div class="stat-label">actual PG connections</div></div>
+  </div>
+</section>
+
+<section>
+  <h3>Read Replicas</h3>
+  <div class="flow" style="justify-content: center;">
+    <div class="flow-box">Writes &rarr; Primary</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">WAL stream</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">Replica 1 (reads)</div>
+  </div>
+  <div class="card-grid cols-2" style="margin-top: 16px;">
+    <div class="card">
+      <div class="card-title">Async Replication</div>
+      <p>Primary commits without waiting. Fast writes. Replica may lag (ms to sec). Risk: data loss on primary crash.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Sync Replication</div>
+      <p>Primary waits for replica ACK before commit. No data loss. Writes slower (network RTT).</p>
+    </div>
+  </div>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 7: MongoDB                                       -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">07</div>
+  <h2>MongoDB</h2>
+  <p style="color: #aaa; font-size: 0.8em;">Flexible documents, aggregation, Atlas Search.</p>
+</section>
+
+<section>
+  <h3>When MongoDB Wins</h3>
+  <div class="card-grid cols-2">
+    <div class="card" style="border-left: 3px solid var(--accent);">
+      <div class="card-title">Use MongoDB</div>
+      <ul>
+        <li>Schema varies per document</li>
+        <li>Deeply nested, read as a unit</li>
+        <li>High write throughput, eventual consistency OK</li>
+        <li>Native horizontal sharding</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left: 3px solid var(--accent2);">
+      <div class="card-title">Stay with PostgreSQL</div>
+      <ul>
+        <li>Well-defined, stable schema</li>
+        <li>Complex JOINs across tables</li>
+        <li>Strict ACID transactions</li>
+        <li>Financial/inventory data</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>Schema Design: Embed vs Reference</h3>
+  <table class="compare">
+    <tr><th>Strategy</th><th>When</th><th>Example</th></tr>
+    <tr><td><strong>Embed</strong></td><td>Read together, bounded, one-to-few</td><td>Order + line items, user + addresses</td></tr>
+    <tr><td><strong>Reference</strong></td><td>Queried independently, unbounded</td><td>User &rarr; orders, product &rarr; reviews</td></tr>
+  </table>
+  <p style="font-size: 0.65em; color: var(--warn); margin-top: 8px;">
+    16 MB document limit! Embedding unbounded arrays (all reviews) will hit this.
+  </p>
+</section>
+
+<section>
+  <h3>Aggregation Pipeline</h3>
+  <div class="flow" style="justify-content: center;">
+    <div class="flow-box">$match</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">$unwind</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">$lookup</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">$group</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">$sort</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box">$project</div>
+  </div>
+  <ul class="checklist" style="margin-top: 16px;">
+    <li><code>$match</code> first — uses indexes, reduces data early</li>
+    <li><code>$unwind</code> flattens arrays — one doc per element</li>
+    <li><code>$lookup</code> is a LEFT JOIN to another collection</li>
+    <li><code>$group</code> is GROUP BY with <code>$sum</code>, <code>$avg</code>, <code>$addToSet</code></li>
+  </ul>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 8: Redis                                         -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">08</div>
+  <h2>Redis</h2>
+  <p style="color: #aaa; font-size: 0.8em;">In-memory speed, rich data structures, production patterns.</p>
+</section>
+
+<section>
+  <h3>Data Structures</h3>
+  <table class="compare">
+    <tr><th>Type</th><th>Use Case</th><th>Key Commands</th></tr>
+    <tr><td><strong>String</strong></td><td>Cache, counters</td><td><code>GET, SET, INCR, SETEX</code></td></tr>
+    <tr><td><strong>Hash</strong></td><td>Sessions, objects</td><td><code>HSET, HGET, HGETALL</code></td></tr>
+    <tr><td><strong>List</strong></td><td>Queues, feeds</td><td><code>LPUSH, RPOP, LRANGE</code></td></tr>
+    <tr><td><strong>Set</strong></td><td>Tags, unique items</td><td><code>SADD, SINTER, SMEMBERS</code></td></tr>
+    <tr><td><strong>Sorted Set</strong></td><td>Leaderboards, ranking</td><td><code>ZADD, ZRANK, ZREVRANGE</code></td></tr>
+    <tr><td><strong>Stream</strong></td><td>Event log, message queue</td><td><code>XADD, XREADGROUP, XACK</code></td></tr>
+  </table>
+</section>
+
+<section>
+  <h3>Production Patterns</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">Cache-Aside</div>
+      <p>Check Redis &rarr; miss? &rarr; query DB &rarr; store in Redis. Invalidate on write. Prevent stampede with locks.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Rate Limiting</div>
+      <p>Sliding window with sorted sets + Lua script. Atomic operation, no race conditions.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Distributed Lock</div>
+      <p><code>SET NX EX</code> + Lua release. Token ownership prevents releasing another's lock.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Pub/Sub vs Streams</div>
+      <p>Pub/Sub: fire-and-forget. Streams: durable log with consumer groups (like lightweight Kafka).</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>Persistence &amp; HA</h3>
+  <table class="compare">
+    <tr><th>Mechanism</th><th>How</th><th>Trade-off</th></tr>
+    <tr><td>RDB (snapshots)</td><td>Periodic fork + dump</td><td>Fast recovery, may lose last 5 min</td></tr>
+    <tr><td>AOF (append log)</td><td>Log every write</td><td>Minimal loss, slower recovery</td></tr>
+    <tr><td>RDB + AOF</td><td>Both</td><td>Best of both worlds (recommended)</td></tr>
+  </table>
+  <p style="font-size: 0.65em; color: var(--warn); margin-top: 8px;">
+    Redis is a cache, NOT a primary database. Always be able to rebuild from your source of truth.
+  </p>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- SECTION 9: System Design                                 -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section>
+  <div class="section-number">09</div>
+  <h2>System Design</h2>
+  <p style="color: #aaa; font-size: 0.8em;">Database architecture at scale.</p>
+</section>
+
+<section>
+  <h3>Scaling Roadmap</h3>
+  <div class="timeline">
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">Stage 1</div>
+        <div class="ts-desc">PG + Redis<br>~10K QPS</div>
+      </div>
+    </div>
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">Stage 2</div>
+        <div class="ts-desc">Read replicas<br>~50K QPS reads</div>
+      </div>
+    </div>
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">Stage 3</div>
+        <div class="ts-desc">CQRS<br>Separate read/write models</div>
+      </div>
+    </div>
+    <div class="timeline-step">
+      <div class="ts-box">
+        <div class="ts-label">Stage 4</div>
+        <div class="ts-desc">Sharding<br>Last resort</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>CAP Theorem</h3>
+  <p style="font-size: 0.72em; color: #ddd;">Network partitions are inevitable. Choose: <strong>Consistency</strong> or <strong>Availability</strong>.</p>
+  <div class="card-grid cols-2">
+    <div class="card" style="border-left: 3px solid var(--accent2);">
+      <div class="card-title">CP (Consistent)</div>
+      <p>PostgreSQL, MongoDB, etcd</p>
+      <p>Returns error rather than stale data. Writes may block.</p>
+    </div>
+    <div class="card" style="border-left: 3px solid var(--warn);">
+      <div class="card-title">AP (Available)</div>
+      <p>Cassandra, DynamoDB, CouchDB</p>
+      <p>Returns potentially stale data. Accepts all writes. Reconciles later.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>Polyglot Persistence</h3>
+  <div class="pattern-card">
+    <div class="ptitle">Users, Orders, Payments</div>
+    <div class="pdesc">Structured, ACID, source of truth</div>
+    <div class="pstack">PostgreSQL</div>
+  </div>
+  <div class="pattern-card">
+    <div class="ptitle">Product Catalog, Event Logs</div>
+    <div class="pdesc">Flexible schema, horizontal scale</div>
+    <div class="pstack">MongoDB</div>
+  </div>
+  <div class="pattern-card">
+    <div class="ptitle">Cache, Sessions, Locks, Rate Limits</div>
+    <div class="pdesc">Sub-ms latency, coordination</div>
+    <div class="pstack">Redis</div>
+  </div>
+  <div class="pattern-card">
+    <div class="ptitle">Full-Text Search, Faceted Navigation</div>
+    <div class="pdesc">Relevance ranking, highlighting</div>
+    <div class="pstack">Elasticsearch (or PG full-text search)</div>
+  </div>
+</section>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- CLOSING                                                  -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section>
+<section class="center">
+  <h2>Key Takeaways</h2>
+  <div class="card-grid cols-2" style="margin-top: 16px;">
+    <div class="card">
+      <div class="card-title">PostgreSQL</div>
+      <ul>
+        <li>MVCC, WAL, VACUUM — understand the internals</li>
+        <li>Indexes: B-tree, GIN, BRIN, partial, covering</li>
+        <li>EXPLAIN ANALYZE is your best debugging tool</li>
+        <li>Connection pooling (PgBouncer) + read replicas</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">MongoDB</div>
+      <ul>
+        <li>Embed for bounded, read-together data</li>
+        <li>Reference for unbounded, independent data</li>
+        <li>Aggregation pipeline: $match first, always</li>
+        <li>Atlas Search for Lucene-powered search</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Redis</div>
+      <ul>
+        <li>Use the right data structure, not just strings</li>
+        <li>Lua scripts for atomic multi-step operations</li>
+        <li>Cache-aside + invalidation + stampede protection</li>
+        <li>Redis is a cache, not a primary database</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">System Design</div>
+      <ul>
+        <li>Start simple: PG + Redis handles most apps</li>
+        <li>Scale reads first (replicas, caching)</li>
+        <li>Shard as a last resort</li>
+        <li>Each database for its strength: polyglot persistence</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="center">
+  <h2>What's Next?</h2>
+  <div class="card-grid cols-2" style="max-width: 700px; margin: 24px auto 0;">
+    <div class="card" style="text-align: center;">
+      <div class="card-title">Module 4</div>
+      <p>Kubernetes Fundamentals</p>
+      <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">Deploy your database-backed API to a cluster</p>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div class="card-title">Module 9</div>
+      <p>Kafka &amp; Message Queues</p>
+      <p style="color: var(--muted); font-size: 0.8em; margin-top: 6px;">Event-driven architecture with your databases</p>
+    </div>
+  </div>
+  <p style="margin-top: 28px; font-size: 0.7em; color: var(--muted);">
+    AI Backend Engineer Learning Path &middot; aiengpath.dev
+  </p>
+</section>
+</section>
+
+
+</div><!-- .slides -->
+</div><!-- .reveal -->
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/zoom/zoom.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    progress: true,
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    center: false,
+    margin: 0.08,
+    width: 1200,
+    height: 700,
+    plugins: [RevealHighlight, RevealNotes, RevealZoom],
+    highlight: {
+      highlightOnLoad: true,
+    },
+  });
+</script>
+</body>
+</html>
